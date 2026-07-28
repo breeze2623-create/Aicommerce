@@ -164,14 +164,14 @@ def chart_05_china_private():
     fig, ax = plt.subplots(figsize=(9, 4.6))
     colors = [C_RED if s == "实际" else "#F87171" for s in df["性质"]]
     bars = ax.bar(df["年份"].astype(str), df["市场规模_万亿元"], color=colors, width=0.55)
-    ax.bar_label(bars, fmt="%.2f", fontsize=9.5, padding=2)
+    ax.bar_label(bars, fmt="%.2f", fontsize=9.5, label_type="center", color="white", fontweight="bold")
     ax.set_ylabel("市场规模（万亿元）", fontsize=9)
     ax.set_ylim(0, 4.0)
     ax.set_title("中国 AI 私域电商市场规模与渗透率（2025 实际 + 2026–2030 预测，图表 C5）\n注意：口径为『私域电商』子集；全量『中国 AI 电商 GMV』尚无权威口径（研究需自建估算）", fontsize=10.5, loc="left")
     ax2 = ax.twinx()
     ax2.plot(df["年份"].astype(str), df["渗透率_pct"], color=C_BLUE, marker="o", linewidth=2, label="AI 渗透率（右轴）")
     for x_, y_ in zip(df["年份"].astype(str), df["渗透率_pct"]):
-        ax2.annotate(f"{y_:.1f}%", (x_, y_), textcoords="offset points", xytext=(0, 8), fontsize=8.5, color=C_BLUE, ha="center")
+        ax2.annotate(f"{y_:.1f}%", (x_, y_), textcoords="offset points", xytext=(0, 10), fontsize=8.5, color=C_BLUE, ha="center")
     ax2.set_ylabel("渗透率（%）", fontsize=9, color=C_BLUE)
     ax2.set_ylim(0, 80)
     ax2.tick_params(axis="y", labelcolor=C_BLUE)
