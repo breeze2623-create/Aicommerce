@@ -139,13 +139,22 @@ def chart_04_entrance_scale():
     colors = [C_RED if r == "国内" else C_BLUE for r in df["区域"]]
     bars = ax.barh(df["产品"], df["规模_亿"], color=colors, height=0.58, alpha=0.92)
     for bar, r in zip(bars, df.itertuples()):
+        low_trust = str(r.置信度).startswith("低")
+        if low_trust:
+            bar.set_hatch("///")
+            bar.set_alpha(0.45)
+            bar.set_edgecolor("#7F1D1D")
+        label = f"{r.规模_亿:g} 亿（{r.口径}）"
+        if low_trust:
+            label += "｜低置信·待三方核实"
         ax.text(bar.get_width() + 0.08, bar.get_y() + bar.get_height() / 2,
-                f"{r.规模_亿:g} 亿（{r.口径}）", va="center", fontsize=8.6)
+                label, va="center", fontsize=8.6,
+                color="#7F1D1D" if low_trust else "#111827")
     ax.set_xlim(0, 12.2)
     ax.set_xlabel("用户/设备规模（亿）——口径各异，仅作量级对照", fontsize=9)
-    ax.set_title("国内外 AI 购物入口规模对照（图表 C4）\n红=国内，蓝=海外；WAU/MAU/年度用户/设备数不可直接混比", fontsize=11, loc="left")
+    ax.set_title("国内外 AI 购物入口规模对照（图表 C4）\n红=国内，蓝=海外；斜纹=低置信（自报且存在注水风险）；WAU/MAU/年度用户/设备数不可直接混比", fontsize=11, loc="left")
     ax.grid(axis="x", linestyle=":", alpha=0.5)
-    footer(fig, "来源：OpenAI 披露、QuestMobile（2026-06）、亚马逊/京东财报与发布会、公开报道。整理：AI 电商研究计划，2026-07。")
+    footer(fig, "来源：OpenAI 披露、QuestMobile（2026-06）、亚马逊/京东财报与发布会、公开报道。置信度分级见《数据置信度分级说明》；京东系自报数据按内部研判降级为低置信，仅作方向参考。整理：AI 电商研究计划，2026-07。")
     fig.savefig(OUT / "04_ai_entrance_user_scale.png")
     plt.close(fig)
 
@@ -214,14 +223,21 @@ def chart_07_scorecard():
     colors = [C_GREEN if c == "效果提升" else C_BLUE for c in df["类别"]]
     bars = ax.barh(df["指标"], df["数值_pct"], color=colors, height=0.58)
     for bar, r in zip(bars, df.itertuples()):
-        ax.text(bar.get_width() + 4, bar.get_y() + bar.get_height() / 2, f"+{r.数值_pct:g}%", va="center", fontsize=9.5)
+        low_trust = str(r.置信度).startswith("低")
+        if low_trust:
+            bar.set_hatch("///")
+            bar.set_alpha(0.45)
+            bar.set_edgecolor("#7F1D1D")
+        label = f"+{r.数值_pct:g}%" + ("（低置信）" if low_trust else "")
+        ax.text(bar.get_width() + 4, bar.get_y() + bar.get_height() / 2, label, va="center", fontsize=9.5,
+                color="#7F1D1D" if low_trust else "#111827")
     ax.set_xlim(0, 245)
     ax.set_xlabel("提升幅度 / 同比增速（%）", fontsize=9)
     from matplotlib.patches import Patch
-    ax.legend(handles=[Patch(color=C_GREEN, label="效果提升（转化/增速溢价）"), Patch(color=C_BLUE, label="使用规模增长（YoY）")], fontsize=8.5, frameon=False, loc="lower right")
+    ax.legend(handles=[Patch(color=C_GREEN, label="效果提升（转化/增速溢价）"), Patch(color=C_BLUE, label="使用规模增长（YoY）"), Patch(facecolor="#93C5FD", hatch="///", edgecolor="#7F1D1D", label="斜纹=低置信（自报·注水风险）")], fontsize=8.5, frameon=False, loc="lower right")
     ax.set_title("站内 AI 导购成绩单（图表 C7）\nRufus 2025 年带来约 120 亿美元增量年化销售；Walmart：LLM 内自有 Agent 插件转化≈自有站 70%，而平台代结账仅≈1/3", fontsize=10.5, loc="left")
     ax.grid(axis="x", linestyle=":", alpha=0.5)
-    footer(fig, "来源：亚马逊 2025Q3/Q4 财报电话会（公司口径）、Adobe（2026-03）、Shopify（2026-05）、Salesforce（2025 假日季）、京东 618 发布会（2026-05）。整理：AI 电商研究计划，2026-07。")
+    footer(fig, "来源：亚马逊 2025Q3/Q4 财报电话会（公司口径）、Adobe（2026-03）、Shopify（2026-05）、Salesforce（2025 假日季）、京东 618 发布会（2026-05，按内部研判降级为低置信）。整理：AI 电商研究计划，2026-07。")
     fig.savefig(OUT / "07_instore_ai_scorecard.png")
     plt.close(fig)
 
