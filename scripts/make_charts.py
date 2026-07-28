@@ -62,7 +62,7 @@ def chart_01_global_forecasts():
     ax.set_xlim(100, 12000)
     ax.xaxis.set_major_formatter(mticker.FuncFormatter(lambda v, _: f"{v:,.0f}"))
     ax.set_xlabel("市场规模预测（十亿美元，对数轴）", fontsize=9)
-    ax.set_title("代理式商务（Agentic Commerce）规模预测：机构口径相差 35 倍\n——差异源于『AI 平台内成交』到『AI 编排/影响的零售收入』的口径谱系", fontsize=11, loc="left")
+    ax.set_title("代理式商务（Agentic Commerce）规模预测：口径与地域/年份叠加，最大相差 35 倍\n——主要差异源于『AI 平台内成交』到『AI 编排/影响的零售收入』的口径谱系（另含美国/全球与 2029/2030 之别）", fontsize=11, loc="left")
     from matplotlib.patches import Patch
     ax.legend(handles=[Patch(color=C_BLUE, label="美国口径"), Patch(color=C_AMBER, label="全球口径")], loc="lower right", fontsize=9, frameon=False)
     ax.grid(axis="x", linestyle=":", alpha=0.5)
@@ -218,26 +218,41 @@ def chart_06_holiday():
 
 
 def chart_07_scorecard():
-    df = pd.read_csv(DATA / "instore_ai_scorecard.csv").sort_values("数值_pct")
-    fig, ax = plt.subplots(figsize=(9.5, 4.6))
-    colors = [C_GREEN if c == "效果提升" else C_BLUE for c in df["类别"]]
-    bars = ax.barh(df["指标"], df["数值_pct"], color=colors, height=0.58)
-    for bar, r in zip(bars, df.itertuples()):
-        low_trust = str(r.置信度).startswith("低")
-        if low_trust:
-            bar.set_hatch("///")
-            bar.set_alpha(0.45)
-            bar.set_edgecolor("#7F1D1D")
-        label = f"+{r.数值_pct:g}%" + ("（低置信）" if low_trust else "")
-        ax.text(bar.get_width() + 4, bar.get_y() + bar.get_height() / 2, label, va="center", fontsize=9.5,
-                color="#7F1D1D" if low_trust else "#111827")
-    ax.set_xlim(0, 245)
-    ax.set_xlabel("提升幅度 / 同比增速（%）", fontsize=9)
+    df = pd.read_csv(DATA / "instore_ai_scorecard.csv")
+    inside = df[df["证据线"] == "站内导购"].sort_values("数值_pct")
+    referral = df[df["证据线"] == "AI引荐流量"].sort_values("数值_pct")
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11.5, 4.6), gridspec_kw={"width_ratios": [1.25, 1]})
+
+    def draw(ax, sub, xmax):
+        colors = [C_GREEN if c == "效果提升" else C_BLUE for c in sub["类别"]]
+        bars = ax.barh(sub["指标"], sub["数值_pct"], color=colors, height=0.55)
+        for bar, r in zip(bars, sub.itertuples()):
+            low_trust = str(r.置信度).startswith("低")
+            if low_trust:
+                bar.set_hatch("///")
+                bar.set_alpha(0.45)
+                bar.set_edgecolor("#7F1D1D")
+            label = f"+{r.数值_pct:g}%" + ("（低置信）" if low_trust else "")
+            ax.text(bar.get_width() + xmax * 0.02, bar.get_y() + bar.get_height() / 2, label,
+                    va="center", fontsize=9, color="#7F1D1D" if low_trust else "#111827")
+        ax.set_xlim(0, xmax)
+        ax.grid(axis="x", linestyle=":", alpha=0.5)
+        ax.tick_params(axis="y", labelsize=8.8)
+
+    draw(ax1, inside, 265)
+    ax1.set_title("证据线 A：站内 AI 导购（交易场内工具）", fontsize=10.5, loc="left")
+    ax1.set_xlabel("提升幅度 / 同比增速（%）", fontsize=9)
+    draw(ax2, referral, 70)
+    ax2.set_title("证据线 B：站外 AI 引荐流量到站质量", fontsize=10.5, loc="left")
+    ax2.set_xlabel("相对非 AI 渠道的优势（%）", fontsize=9)
     from matplotlib.patches import Patch
-    ax.legend(handles=[Patch(color=C_GREEN, label="效果提升（转化/增速溢价）"), Patch(color=C_BLUE, label="使用规模增长（YoY）"), Patch(facecolor="#93C5FD", hatch="///", edgecolor="#7F1D1D", label="斜纹=低置信（自报·注水风险）")], fontsize=8.5, frameon=False, loc="lower right")
-    ax.set_title("站内 AI 导购成绩单（图表 C7）\nRufus 2025 年带来约 120 亿美元增量年化销售；Walmart：LLM 内自有 Agent 插件转化≈自有站 70%，而平台代结账仅≈1/3", fontsize=10.5, loc="left")
-    ax.grid(axis="x", linestyle=":", alpha=0.5)
-    footer(fig, "来源：亚马逊 2025Q3/Q4 财报电话会（公司口径）、Adobe（2026-03）、Shopify（2026-05）、Salesforce（2025 假日季）、京东 618 发布会（2026-05，按内部研判降级为低置信）。整理：AI 电商研究计划，2026-07。")
+    ax1.legend(handles=[Patch(color=C_GREEN, label="效果指标"), Patch(color=C_BLUE, label="使用规模增长（YoY）"),
+                        Patch(facecolor="#93C5FD", hatch="///", edgecolor="#7F1D1D", label="斜纹=低置信（自报·注水风险）")],
+               fontsize=8.5, frameon=False, loc="lower right")
+    fig.suptitle("AI 导购效果记分卡：站内导购与站外引荐两条证据线分开呈现（图表 C7）\nRufus 2025 年带来约 120 亿美元增量年化销售（公司口径）；Walmart：LLM 内自有插件转化≈自有站 70%，平台代结账仅≈1/3",
+                 fontsize=11, x=0.01, ha="left")
+    fig.tight_layout(rect=[0, 0, 1, 0.86])
+    footer(fig, "来源：亚马逊 2025Q3/Q4 财报电话会（公司口径）、Salesforce（2025 假日季）、Adobe（2026-03）、Shopify（2026-05）、京东 618 发布会（2026-05，按内部研判降级为低置信）。两条证据线口径不同，不可合并为单一区间。整理：AI 电商研究计划（2026-07）")
     fig.savefig(OUT / "07_instore_ai_scorecard.png")
     plt.close(fig)
 
