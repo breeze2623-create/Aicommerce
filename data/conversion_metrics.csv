@@ -1,0 +1,8 @@
+panel,指标,数值_pct,备注
+reversal,2025-03 转化率,-38,AI流量转化率相对非AI渠道
+reversal,2026-03 转化率,42,AI流量转化率相对非AI渠道(历史新高)
+reversal,2025-03 单访问收入RPV,-56,原文为非AI比AI高128%(换算约-56%)
+reversal,2026-03 单访问收入RPV,37,AI比非AI高37%
+engagement,停留时长,48,2026-03 AI来源访客相对非AI
+engagement,浏览页数,13,2026-03 AI来源访客相对非AI
+engagement,互动率,12,2026-03 AI来源访客相对非AI

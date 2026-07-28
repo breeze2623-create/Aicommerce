@@ -1,0 +1,7 @@
+machine_label,机构,范围,目标年份,低值_十亿美元,高值_十亿美元,口径
+emarketer_us,eMarketer,美国,2029,144,144,仅AI平台内完成结账的交易
+ms_us,Morgan Stanley,美国,2030,190,385,代理自主执行的购买
+bain_us,Bain,美国,2030,300,500,代理发起/影响/完成的购买
+mck_us,McKinsey,美国,2030,900,1000,代理编排的零售收入(含AI影响决策)
+edgar_global,Edgar Dunn,全球,2030,1700,2900,零售交易流(窄/宽口径)
+mck_global,McKinsey,全球,2030,3000,5000,代理编排的零售收入(全球)
