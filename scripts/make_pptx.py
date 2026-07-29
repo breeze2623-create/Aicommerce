@@ -1,14 +1,11 @@
 #!/usr/bin/env python3
-"""生成《AI 电商行业研究》沃尔玛中国 CTO 汇报 PPT（16:9）。
-
-用法：python3 scripts/make_pptx.py
-输出：report/AI电商行业研究_沃尔玛中国CTO汇报.pptx + report/pptx_outline.md（评审用文字稿）
-"""
+"""AI电商行业研究报告 — 正式版PPT生成脚本（16:9）。"""
 
 from pathlib import Path
 
 from pptx import Presentation
 from pptx.dml.color import RGBColor
+from pptx.enum.shapes import MSO_SHAPE
 from pptx.enum.text import PP_ALIGN
 from pptx.oxml.ns import qn
 from pptx.util import Emu, Inches, Pt
@@ -18,166 +15,135 @@ CHARTS = ROOT / "charts"
 OUT = ROOT / "report"
 OUT.mkdir(exist_ok=True)
 
-# 品牌色
-BLUE = RGBColor(0x00, 0x71, 0xCE)      # Walmart blue
-DARK = RGBColor(0x0B, 0x1F, 0x3A)
+NAVY = RGBColor(0x0F, 0x27, 0x44)
+BLUE = RGBColor(0x1D, 0x4E, 0xD8)
 INK = RGBColor(0x1F, 0x29, 0x37)
 GRAY = RGBColor(0x6B, 0x72, 0x80)
-YELLOW = RGBColor(0xFF, 0xC2, 0x20)    # Walmart spark yellow
-RED = RGBColor(0xB4, 0x23, 0x18)
+LIGHT = RGBColor(0xF1, 0xF5, 0xF9)
 WHITE = RGBColor(0xFF, 0xFF, 0xFF)
-LIGHT = RGBColor(0xF3, 0xF6, 0xFB)
+ACCENT = RGBColor(0x0E, 0x74, 0x90)
 
-FONT = "Microsoft YaHei"  # 交付环境常见中文字体；渲染端缺失时自动替换为本机 CJK 字体
-
+FONT = "Microsoft YaHei"
 SW, SH = Inches(13.333), Inches(7.5)
+outline = []
 
-outline_lines = []
 
-
-def set_font(run, size=14, bold=False, color=INK, name=FONT):
-    f = run.font
-    f.size = Pt(size)
-    f.bold = bold
-    f.color.rgb = color
-    f.name = name
+def set_font(run, size=14, bold=False, color=INK):
+    run.font.size = Pt(size)
+    run.font.bold = bold
+    run.font.color.rgb = color
+    run.font.name = FONT
     rPr = run._r.get_or_add_rPr()
     ea = rPr.find(qn("a:ea"))
     if ea is None:
         ea = rPr.makeelement(qn("a:ea"), {})
         rPr.append(ea)
-    ea.set("typeface", name)
+    ea.set("typeface", FONT)
 
 
-def add_textbox(slide, x, y, w, h, lines, align=PP_ALIGN.LEFT):
-    """lines: list of (text, size, bold, color, bullet_level or None)"""
+def box(slide, x, y, w, h, lines, align=PP_ALIGN.LEFT):
     tb = slide.shapes.add_textbox(x, y, w, h)
     tf = tb.text_frame
     tf.word_wrap = True
     first = True
-    for text, size, bold, color, level in lines:
+    for text, size, bold, color in lines:
         p = tf.paragraphs[0] if first else tf.add_paragraph()
         first = False
         p.alignment = align
-        if level is not None:
-            p.level = level
         run = p.add_run()
         run.text = text
         set_font(run, size=size, bold=bold, color=color)
-        p.space_after = Pt(max(4, size * 0.35))
+        p.space_after = Pt(max(3, size * 0.3))
     return tb
 
 
-def add_rect(slide, x, y, w, h, fill, line=None):
-    from pptx.enum.shapes import MSO_SHAPE
-
+def rect(slide, x, y, w, h, fill):
     sh = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, x, y, w, h)
     sh.fill.solid()
     sh.fill.fore_color.rgb = fill
-    if line is None:
-        sh.line.fill.background()
-    else:
-        sh.line.color.rgb = line
+    sh.line.fill.background()
     sh.shadow.inherit = False
     return sh
 
 
-def new_slide(prs, title=None, kicker=None, page_no=None, title_color=INK):
-    slide = prs.slides.add_slide(prs.slide_layouts[6])  # blank
-    if kicker:
-        add_rect(slide, Inches(0.55), Inches(0.42), Inches(0.14), Inches(0.5), YELLOW)
-        add_textbox(slide, Inches(0.82), Inches(0.36), Inches(11.6), Inches(0.4),
-                    [(kicker, 12, True, BLUE, None)])
-    if title:
-        add_textbox(slide, Inches(0.8), Inches(0.72), Inches(12.0), Inches(1.0),
-                    [(title, 22, True, title_color, None)])
-        outline_lines.append(f"\n## 第 {page_no} 页｜{kicker or ''}｜{title}")
-    # 页脚
-    add_textbox(slide, Inches(0.55), Inches(7.08), Inches(12.2), Inches(0.35),
-                [("沃尔玛中国 CTO 汇报｜AI 电商行业研究（预读版 v1.3）｜数据截至 2026-07｜内部资料·注意保密"
-                  + (f"｜{page_no}" if page_no else ""), 8.5, False, GRAY, None)])
+def slide_base(prs, chapter, title, page):
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    rect(slide, 0, 0, SW, Inches(0.08), BLUE)
+    box(slide, Inches(0.7), Inches(0.28), Inches(12), Inches(0.35),
+        [(chapter, 11, True, ACCENT)])
+    box(slide, Inches(0.7), Inches(0.58), Inches(12), Inches(0.7),
+        [(title, 20, True, NAVY)])
+    box(slide, Inches(0.7), Inches(7.1), Inches(12), Inches(0.3),
+        [(f"AI电商行业研究报告｜正式版 v2.0｜数据截至2026-07｜{page}", 8.5, False, GRAY)])
+    outline.append(f"\n## 第{page}页｜{chapter}｜{title}")
     return slide
 
 
-def note(slide, text, y=Inches(6.62)):
-    add_textbox(slide, Inches(0.8), y, Inches(11.9), Inches(0.45),
-                [(text, 9.5, False, GRAY, None)])
-    outline_lines.append(f"    注：{text}")
-
-
-def bullets(slide, items, x=Inches(0.8), y=Inches(1.7), w=Inches(11.9), h=Inches(4.8), size=15):
+def bullets(slide, items, y=Inches(1.45), size=13.5):
     lines = []
     for it in items:
         if isinstance(it, tuple):
-            head, body = it
-            lines.append((f"◆ {head}", size, True, INK, 0))
-            if body:
-                lines.append((body, size - 1.5, False, INK, 1))
+            lines.append((f"● {it[0]}", size, True, INK))
+            if it[1]:
+                lines.append((f"   {it[1]}", size - 1.5, False, GRAY))
         else:
-            lines.append((f"◆ {it}", size, False, INK, 0))
-    add_textbox(slide, x, y, w, h, lines)
+            lines.append((f"● {it}", size, False, INK))
+    box(slide, Inches(0.75), y, Inches(11.9), Inches(5.3), lines)
     for it in items:
-        if isinstance(it, tuple):
-            outline_lines.append(f"    - {it[0]}：{it[1]}")
-        else:
-            outline_lines.append(f"    - {it}")
+        outline.append(f"  - {it[0]}：{it[1]}" if isinstance(it, tuple) else f"  - {it}")
 
 
-def image_slide(prs, kicker, title, img, page_no, src_note, img_h=4.7):
-    slide = new_slide(prs, title=title, kicker=kicker, page_no=page_no)
+def note(slide, text):
+    box(slide, Inches(0.75), Inches(6.55), Inches(11.9), Inches(0.45),
+        [(text, 9, False, GRAY)])
+    outline.append(f"  注：{text}")
+
+
+def add_image(slide, img, y=Inches(1.4), max_h=4.9):
     from PIL import Image
-
-    with Image.open(CHARTS / img) as im:
+    path = CHARTS / img
+    with Image.open(path) as im:
         w_px, h_px = im.size
-    disp_h = Inches(img_h)
+    disp_h = Inches(max_h)
     disp_w = Emu(int(disp_h * w_px / h_px))
-    max_w = Inches(12.2)
+    max_w = Inches(12.0)
     if disp_w > max_w:
         disp_w = max_w
         disp_h = Emu(int(disp_w * h_px / w_px))
     left = Emu(int((SW - disp_w) / 2))
-    slide.shapes.add_picture(str(CHARTS / img), left, Inches(1.75), width=disp_w, height=disp_h)
-    note(slide, src_note)
-    outline_lines.append(f"    [图：charts/{img}]")
-    return slide
+    slide.shapes.add_picture(str(path), left, y, width=disp_w, height=disp_h)
+    outline.append(f"  [图：charts/{img}]")
 
 
-def table_slide(prs, kicker, title, page_no, headers, rows, col_widths, src_note, font_size=11, row_h=0.52):
-    slide = new_slide(prs, title=title, kicker=kicker, page_no=page_no)
-    n_rows, n_cols = len(rows) + 1, len(headers)
-    x, y = Inches(0.8), Inches(1.75)
-    total_w = sum(col_widths)
-    tbl_shape = slide.shapes.add_table(n_rows, n_cols, x, y, Inches(total_w), Inches(row_h * n_rows))
-    tbl = tbl_shape.table
-    for j, wj in enumerate(col_widths):
-        tbl.columns[j].width = Inches(wj)
-    for j, htxt in enumerate(headers):
+def table_slide(prs, chapter, title, page, headers, rows, widths, source, fs=10.5):
+    slide = slide_base(prs, chapter, title, page)
+    n_r, n_c = len(rows) + 1, len(headers)
+    tbl = slide.shapes.add_table(n_r, n_c, Inches(0.7), Inches(1.45),
+                                 Inches(sum(widths)), Inches(0.48 * n_r)).table
+    for j, w in enumerate(widths):
+        tbl.columns[j].width = Inches(w)
+    for j, h in enumerate(headers):
         cell = tbl.cell(0, j)
         cell.fill.solid()
-        cell.fill.fore_color.rgb = BLUE
+        cell.fill.fore_color.rgb = NAVY
         p = cell.text_frame.paragraphs[0]
         run = p.add_run()
-        run.text = htxt
-        set_font(run, size=font_size, bold=True, color=WHITE)
-    for i, row in enumerate(rows, start=1):
+        run.text = h
+        set_font(run, size=fs, bold=True, color=WHITE)
+    for i, row in enumerate(rows, 1):
         for j, val in enumerate(row):
             cell = tbl.cell(i, j)
             cell.fill.solid()
             cell.fill.fore_color.rgb = LIGHT if i % 2 else WHITE
             cell.margin_top = Pt(3)
-            cell.margin_bottom = Pt(3)
             tf = cell.text_frame
             tf.word_wrap = True
             p = tf.paragraphs[0]
             run = p.add_run()
             run.text = str(val)
-            low_trust = "低置信" in str(val)
-            set_font(run, size=font_size - (1 if len(str(val)) > 60 else 0), bold=False,
-                     color=RED if low_trust else INK)
-    note(slide, src_note)
-    outline_lines.append("    [表] " + " | ".join(headers))
-    for row in rows:
-        outline_lines.append("      " + " | ".join(str(v) for v in row))
+            set_font(run, size=fs - (1 if len(str(val)) > 55 else 0), color=INK)
+    note(slide, source)
+    outline.append("  [表] " + " | ".join(headers))
     return slide
 
 
@@ -185,234 +151,229 @@ def build():
     prs = Presentation()
     prs.slide_width = SW
     prs.slide_height = SH
-    pn = 0
+    p = 0
 
-    # ---- 1 封面 ----
-    pn += 1
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
-    add_rect(slide, 0, 0, SW, SH, DARK)
-    add_rect(slide, Inches(0.9), Inches(2.02), Inches(0.18), Inches(1.65), YELLOW)
-    add_textbox(slide, Inches(1.25), Inches(1.55), Inches(11.3), Inches(2.6), [
-        ("AI 电商行业研究", 40, True, WHITE, None),
-        ("格局、威胁与沃尔玛中国的行动选项", 24, False, RGBColor(0xBF, 0xDB, 0xFE), None),
+    # 1 封面
+    p += 1
+    s = prs.slides.add_slide(prs.slide_layouts[6])
+    rect(s, 0, 0, SW, SH, NAVY)
+    rect(s, Inches(0.9), Inches(2.1), Inches(0.12), Inches(1.8), ACCENT)
+    box(s, Inches(1.25), Inches(2.0), Inches(11), Inches(2.2), [
+        ("AI电商行业研究报告", 36, True, WHITE),
+        ("全球与中国市场全景 · 双路径分析 · 产业链与场景机会", 16, False, RGBColor(0xBF, 0xDB, 0xFE)),
     ])
-    add_textbox(slide, Inches(1.25), Inches(4.35), Inches(11.0), Inches(2.2), [
-        ("汇报对象：沃尔玛中国 CTO", 15, True, WHITE, None),
-        ("版本：预读版 v1.3 ｜ 数据截至 2026-07 ｜ 配套预读文档 30 分钟", 12.5, False, RGBColor(0x93, 0xC5, 0xFD), None),
-        ("数据纪律：全部数字标注来源与置信度；京东系自报数据按内部研判整体降级为『低置信』，图表以斜纹标注，不作为决策依据", 12.5, False, YELLOW, None),
-        ("质量控制：本汇报经独立评审盲评循环（评分标准见附录），达标后提交", 12.5, False, RGBColor(0x93, 0xC5, 0xFD), None),
+    box(s, Inches(1.25), Inches(4.6), Inches(11), Inches(1.8), [
+        ("正式版 v2.0", 14, True, WHITE),
+        ("数据截至：2026年7月", 12, False, RGBColor(0x93, 0xC5, 0xFD)),
+        ("数据原则：仅采用第三方监测、公司财报或官方公告可追溯数据；未经独立验证的自报数据不予展示", 11, False, RGBColor(0x93, 0xC5, 0xFD)),
     ])
-    outline_lines.append("## 第 1 页｜封面｜AI 电商行业研究：格局、威胁与沃尔玛中国的行动选项（含数据纪律与质量控制声明）")
+    outline.append("## 第1页｜封面｜AI电商行业研究报告（正式版v2.0）")
 
-    # ---- 2 三个判断 ----
-    pn += 1
-    slide = new_slide(prs, kicker="执行摘要 1/2", title="三个判断：入口在前移、交易留本地、山姆最受益也最受攻", page_no=pn)
-    bullets(slide, [
-        ("判断一｜购物决策入口正在前移到对话框，速度快于预期",
-         "美国零售 AI 导流 2026Q1 同比 +393%，转化率一年内 -38% → +42%（Adobe，高置信）；假日季 20% 全球零售订单、2620 亿美元受 AI 影响（Salesforce，高置信）；国内豆包 3.83 亿 MAU 已闭环抖音电商、千问通淘宝、元宝通京东。观望窗口以季度计"),
-        ("判断二｜交易不会被第三方 AI 拿走，但『决策』会——正确姿势已被沃尔玛美国验证",
-         "ChatGPT 站内代结账转化仅为商家自有渠道约 1/3，上线约半年收缩；Sparky 以插件进驻 ChatGPT/Gemini、把交易带回自有体系后，转化恢复到自有站约 70%。中国的舞台是微信/豆包/千问"),
-        ("判断三｜山姆是中国最适合 AI 导购的零售资产，也是 AI 比价/平替攻击的头号标靶",
-         "约 4000 精选 SKU + 1070 万会员 + 线上占比超 50% + 补货指令自动化近 90% → AI 推荐准确率与 ROI 天花板最高；反面：『山姆平替』内容截流决策，美团小象+叮咚约 2000 前置仓正面进攻即时零售腹地"),
-    ], size=14.5)
-    note(slide, "来源：Adobe / Salesforce / QuestMobile（高置信）；公司披露与媒体口径（中置信）。详见预读文档第 1~3 节。")
+    # 2 目录
+    p += 1
+    s = slide_base(prs, "目录", "报告结构", p)
+    bullets(s, [
+        "第一章  研究说明与数据口径",
+        "第二章  执行摘要：主要发现与建议方向",
+        "第三章  全球市场全景：规模、导流与假日季验证",
+        "第四章  双路径分析：站外LLM与站内AI导购",
+        "第五章  中国市场格局",
+        "第六章  产业链结构（MECE）",
+        "第七章  零售与生鲜场景结合点",
+        "第八章  产品技术机会与结论建议",
+    ], size=15)
 
-    # ---- 3 三个建议 ----
-    pn += 1
-    slide = new_slide(prs, kicker="执行摘要 2/2", title="三个建议：Build 站内助手、Ready 供给就绪、Partner 微信卡位", page_no=pn)
-    bullets(slide, [
-        ("Build｜90 天在山姆 App/小程序上线『餐桌助手』MVP",
-         "菜谱→购物车、常购清单一键成车、商品问答三个高确定场景；深圳/上海会员灰度 10%；KPI：周使用率 ≥15%、助手加购转化 ≥ 搜索基线 1.2 倍"),
-        ("Ready｜立即建立 AI 可见度基线与商品数据 LLM 就绪化",
-         "500 组购物问题×豆包/千问/元宝/点点，月度监测『山姆被推荐率、被平替率』；500 SKU feed 结构化 POC——所有路线的地基，成本低、无前置条件"),
-        ("Partner｜把腾讯云 Mall 合作升级为『山姆 Agent』共建",
-         "对标元宝×京东模式卡位微信 AI 入口；谈判底线=交易、会员、支付留在山姆体系（Sparky 原则）；对豆包/千问保持『可被发现、不交交易』的最小接入"),
-    ], size=14.5)
-    note(slide, "三条并行组合执行而非三选一；预算与团队诉求见第 16 页。")
+    # 3 研究说明
+    p += 1
+    s = slide_base(prs, "第一章  研究说明", "研究范围、能力分级与数据采用原则", p)
+    bullets(s, [
+        ("研究范围", "AI介入消费者需求唤起—决策—交易—履约—售后链路，或介入商家经营链路的电商形态"),
+        ("路径A：站外2C LLM", "通用AI助手内完成购物决策起点：ChatGPT、Gemini、Perplexity、豆包、千问、元宝"),
+        ("路径B：站内AI导购", "电商/零售App内嵌助手：Amazon Rufus、Walmart Sparky、淘宝AI万能搜、Instacart Cart Assistant"),
+        ("能力分级A1—A5", "站内问答 → 站外种草导流 → 对话内闭环 → 授权代理执行 → 自主代理"),
+        ("数据原则", "优先第三方与财报数据；公司自报须来自财报电话会或官方公告；未经独立验证的自报数据不展示；严格区分「AI影响的销售」与「AI平台内成交」"),
+    ], size=13)
 
-    # ---- 4~7 全球信号 ----
-    pn += 1
-    image_slide(prs, "全球信号 1/4", "AI 导流一年成为零售结构性渠道：Q1 同比 +393%，假日季峰值 +1151%",
-                "02_us_ai_traffic_growth.png", pn,
-                "决策含义：AI 导流不是季节性噪音而是结构性迁移——零售业增速领先所有行业，「观望」的机会成本最高。")
-    pn += 1
-    image_slide(prs, "全球信号 2/4", "质量逆转：AI 流量转化率从 -38% 到 +42%，单访问收入高 37%",
-                "03_ai_conversion_reversal.png", pn,
-                "决策含义：AI 流量已是最优获客渠道，且当前获取成本低于付费搜索——典型的红利期窗口。")
-    pn += 1
-    image_slide(prs, "全球信号 3/4", "假日季检验：AI 影响 20% 全球订单；部署自有 Agent 的零售商增速快 59%",
-                "06_holiday_ai_influence.png", pn,
-                "口径提醒：『AI 影响的销售』≠『AI 内成交』，两者相差约一个数量级，本汇报严格分开使用。")
-    pn += 1
-    image_slide(prs, "全球信号 4/4", "规模预期：口径相差 35 倍——『AI 内成交』尚小，『AI 影响』已巨大",
-                "01_global_agentic_forecasts.png", pn,
-                "决策含义：不必赌宽口径兑现，窄口径（AI 内成交）已足以支撑试点级投入；宽口径决定的是战略卡位价值。")
+    # 4 执行摘要
+    p += 1
+    s = slide_base(prs, "第二章  执行摘要", "三项主要发现", p)
+    bullets(s, [
+        ("发现一：决策入口向对话界面迁移",
+         "美国零售AI导流2026Q1同比+393%，转化率一年内由-38%转为+42%（Adobe）；假日季AI影响约20%全球零售订单、2620亿美元（Salesforce）；国内豆包MAU 3.83亿、千问1.66亿（QuestMobile）"),
+        ("发现二：交易宜留在零售商自有体系",
+         "ChatGPT Instant Checkout上线约半年后收缩；Sparky以插件接入外部AI、结账回自有体系后，转化约为自有站70%，高于平台代结账阶段（约1/3）"),
+        ("发现三：站内导购效果可量化，生鲜与会员制适配度更高",
+         "Rufus 2025年使用用户超3亿，购买完成率+60%，约120亿美元增量年化销售（亚马逊财报电话会，公司口径）"),
+    ], size=13)
+    note(s, "数据来源详见各章节图表脚注；本页仅列已纳入正式报告的可追溯数据。")
 
-    # ---- 8 沃尔玛全球已验证 ----
-    pn += 1
-    slide = new_slide(prs, kicker="全球资产", title="沃尔玛美国已替我们交过学费：代结账失败、插件模式成功", page_no=pn)
-    bullets(slide, [
-        ("Instant Checkout 教训（2025-10 ~ 2026-03）",
-         "约 20 万 SKU 接入 ChatGPT 站内代结账：转化率仅为自有渠道约 1/3、错购频发 → 退出。结论：缺购物车/优惠/会员/库存联动的对话内直购不成立"),
-        ("Sparky 插件模式（2026-03 起）",
-         "自有 Agent 进驻 ChatGPT（Plus/Pro）与 Gemini：对话内逛沃尔玛、回沃尔玛结账，转化恢复到自有站约 70%，会员与数据完整保留；Claude 集成洽谈中"),
-        ("同行印证",
-         "Amazon Rufus：2025 年 3 亿+ 用户、购买完成率 +60%、约 120 亿美元增量年化销售（自报，中置信）；Instacart 把 Cart Assistant 白标输出给 Kroger/Sprouts——生鲜 AI 进入『基建即服务』阶段"),
-        ("对中国团队的含义",
-         "①站内 AI 导购 ROI 为正、②交易主权留自有体系、③『被 AI 发现』是新流量入口——三件事无需在中国重新论证，需要的是本地化入口选择与合规改造"),
-    ], size=13.5)
-    note(slide, "来源：The Paypers / WIRED 报道、OpenAI 公告（中置信）；关键数字已与多方报道交叉。")
-
-    # ---- 9 分析坐标系：五级框架 ----
-    pn += 1
-    table_slide(prs, "分析坐标系", "AI 购物能力五级：山姆站内做 A1→A3、站外做 A2、A4 只在复购场景灰度", pn,
-                ["级别", "名称", "特征", "玩家标级（2026-07）"],
-                [
-                    ["A1", "站内问答辅助", "答疑、比较、攻略，不改变交易流程", "Rufus 早期、京言（方向性事实）、淘宝问问"],
-                    ["A2", "站外种草导流", "AI 给推荐 + 跳转链接，交易在别处", "元宝×京东（商品卡→小程序）、Sparky-in-ChatGPT（插件→自有结账）、小红书点点"],
-                    ["A3", "对话内闭环", "选品、下单、支付不出对话界面", "豆包×抖音电商、千问×淘宝；Buy it in ChatGPT（已收缩，反例）"],
-                    ["A4", "授权代理执行", "凑单用券、盯价代拍、自动补货", "Rufus（Buy for Me/自动购买）、淘宝 AI 帮抢——信任与风控是升级卡点"],
-                    ["A5", "自主代理", "长期授权、全网比价代买", "尚无规模化案例（美国信任全自动结账者仅约 14%，行业调查汇总口径·中置信·待溯源）"],
-                ],
-                [0.8, 1.8, 3.8, 5.6],
-                "本研究自建框架，后文『A2/A4 级』均指此坐标系；预读文档 §1.3 有同款定义表。",
-                font_size=10.5, row_h=0.62)
-
-    # ---- 10 中国格局 ----
-    pn += 1
-    table_slide(prs, "中国战场 1/4", "入口格局：四大阵营+两个变量，微信系联盟模式与沃尔玛通道天然契合", pn,
-                ["阵营", "模式", "关键进展（置信度）", "对沃尔玛中国的含义"],
-                [
-                    ["字节：豆包×抖音", "垂直闭环", "3.83 亿 MAU（高）；『买前问豆包』一级入口，App 内闭环；2026-07 起订单正式归因（中）", "年轻家庭决策截流；『山姆平替』内容放大器"],
-                    ["阿里：千问×淘宝", "垂直闭环", "1.66 亿 MAU（高）；对话完成淘宝全链路；1.4 亿用户首次 AI 购物（中）", "盒马为其生鲜抓手，入口优先导流阿里系"],
-                    ["腾讯+京东：元宝×京东", "生态联盟", "2026-07 打通小程序生态：对话出商品卡→跳京东小程序成交（中）", "最重要样板：微信 AI 愿以小程序方式与零售方合作——山姆可复制"],
-                    ["京东自有 AI", "自建", "京言/京东 AI 购等；自报数据（8000 万用户等）→ 低置信·不采信", "方向可确认、数字不采信；既是秒送渠道伙伴又是竞对"],
-                    ["变量：小红书点点 / 拼多多 / 快手", "社区 AI / 站内工具", "点点并入主站（中）；拼多多、快手已上线 AI 搜索，披露极少", "点点=山姆爆品种草与平替拆解主阵地，GEO 必须覆盖"],
-                ],
-                [2.0, 1.5, 4.6, 3.9],
-                "来源：QuestMobile（高）、各公司官宣（中）、京东发布会（低置信·降级）。", font_size=10.5, row_h=0.72)
-
-    # ---- 11 入口规模图 ----
-    pn += 1
-    image_slide(prs, "中国战场 2/4", "入口体量：豆包已达 3.83 亿月活；京东自报数据以斜纹降级呈现",
-                "04_ai_entrance_user_scale.png", pn,
-                "决策含义：站外入口体量已达电商 App 量级，『被 AI 发现』成为必选项；低置信数据不改变该判断。", img_h=4.55)
-
-    # ---- 12 中国渗透 ----
-    pn += 1
-    image_slide(prs, "中国战场 3/4", "渗透曲线：AI 私域电商 2025 年 0.65 万亿，2030 年预计 3.37 万亿",
-                "05_china_ai_private_ecommerce.png", pn,
-                "口径注意：仅为私域子集——中国尚无全量『AI 电商 GMV』权威口径，本研究 P1 阶段将自建估算模型。", img_h=4.55)
-
-    # ---- 13 站内导购成绩单 ----
-    pn += 1
-    image_slide(prs, "中国战场 4/4", "两条证据线均为正：站内（Rufus 完成率 +60%、自有 Agent 增速溢价 +59%）；站外引荐（Adobe +42%、Shopify +54%）",
-                "07_instore_ai_scorecard.png", pn,
-                "决策含义：四个数字口径各不相同、只并列不合并；京东斜纹柱不参与判断——结论不依赖低置信数据。", img_h=4.5)
-
-    # ---- 13 山姆资产盘点 ----
-    pn += 1
-    table_slide(prs, "沃尔玛中国映射 1/2", "山姆的七项资产决定：AI 导购的 ROI 天花板全行业最高", pn,
-                ["资产", "数值/事实（置信度）", "AI 含义"],
-                [
-                    ["会员体系", "付费会员 1070 万、卓越续卡率 92%（中）", "高质量第一方数据；『替会员省时间』叙事天然成立"],
-                    ["精选 SKU", "约 4000 个，为传统商超 1/10", "商品池小 → 推荐准、幻觉少、推理成本低"],
-                    ["线上盘", "线上占比超 50%（约 650~700 亿元）；80% 订单 1 小时达（中）", "AI 转化增益直接作用于最大收入池"],
-                    ["履约网络", "门店+云仓双层网络，前置仓/云仓 455+（中）", "『餐桌 Agent』的履约兑现现成"],
-                    ["供应链 AI", "云仓自动补货指令占比近 90%（中）", "向『损耗联动导购』延伸的边际成本低"],
-                    ["腾讯合作", "云 Mall 支撑山姆 App/小程序多年（大促峰值 QPS 10 万+）", "微信 AI 卡位的现成工程与商务通道"],
-                    ["全球资产", "Sparky 产品与插件经验、Instant Checkout 教训", "方法论可复用；模型与数据链路须本地合规化"],
-                ],
-                [1.7, 5.3, 5.0],
-                "来源：公司披露、沃尔玛国际管理层披露、媒体报道（中置信）。", font_size=10.5, row_h=0.6)
-
-    # ---- 15 威胁与机会 ----
-    pn += 1
-    slide = new_slide(prs, kicker="沃尔玛中国映射 2/2", title="四个威胁（T1 附敞口测算）与三个结构性机会", page_no=pn)
-    threat_lines = [
-        ("威胁（紧迫度排序）", 15, True, RED, None),
-        ("T1 决策截流（现在进行时）：会员先问豆包/小红书『值不值、有无平替』。敞口测算（作者区间估算）：线上盘约 675 亿 × 购前 AI 咨询渗透 20%~40% × 流失/降级 5%~10% ⇒ 年化 GMV-at-risk 约 7~27 亿元，P2 用实测收窄", 12, False, INK, 0),
-        ("T2 即时零售火力升级（1 年内）：美团小象+叮咚约 2000 前置仓，价格与时效双压 → AI 侧应对=P1 以会员价值差异化；小象/叮咚 AI 动态并入 P2 监测", 12, False, INK, 0),
-        ("T3 入口绑定排他（1~2 年）：微信 AI 零售位若被京东系独占 → 对应 N1 谈判线", 12, False, INK, 0),
-        ("T4 供给侧标准缺位（1~2 年）：feed 不做 LLM 就绪化，可见度被动下降（34% 商品页对 AI 不可见，Adobe·高置信）→ 对应 P2", 12, False, INK, 0),
-    ]
-    add_textbox(slide, Inches(0.8), Inches(1.6), Inches(5.9), Inches(4.9), threat_lines)
-    opp_lines = [
-        ("机会（山姆结构性占优）", 15, True, RGBColor(0x04, 0x78, 0x57), None),
-        ("1. 餐桌 Agent：会员制+菜谱驱动+高频复购，『今晚吃什么→一键成车→1 小时达』全中国只有山姆能以自有流量跑通", 12.5, False, INK, 0),
-        ("2. 会员复购代理（A4 级）：低 SKU 高复购下授权代理信任门槛最低。信任数据：国内 65%~70% 期待 AI 比价整理、仅 37%~48% 接受自动下单 → A4 从复购场景切入而非新品推荐", 12.5, False, INK, 0),
-        ("3. 损耗联动导购：云仓库存/效期接入推荐（临期折扣+今晚特价菜谱），同时改善损耗与体验——直击近期极速达临期品舆情", 12.5, False, INK, 0),
-    ]
-    add_textbox(slide, Inches(7.0), Inches(1.6), Inches(5.7), Inches(4.9), opp_lines)
-    for t, *_ in threat_lines + opp_lines:
-        outline_lines.append(f"    - {t}")
-    note(slide, "对标：Instacart Cart Assistant 已落地 Kroger/Sprouts；A1~A5 定义见第 9 页。大卖场/社区店按『同栈移植』跟随策略推进（预读 §3.4），拼多多/美团闪购动态并入 P2 监测。")
-
-    # ---- 15 战略选项 ----
-    pn += 1
-    table_slide(prs, "战略选项", "Build / Partner / Ready 组合执行，而非三选一；三条红线不碰", pn,
-                ["路线", "内容", "加码判据", "风险控制"],
-                [
-                    ["Build 自建站内 AI", "山姆 App/小程序『餐桌助手』；国内合规模型栈私有化部署、数据不出域", "站内渗透率与转化增益达标即扩品类、扩沃尔玛 App", "先做高确定任务（复购/菜谱/售后）；低 SKU 使幻觉可控"],
-                    ["Partner 生态卡位", "与腾讯共建『山姆 Agent』进微信 AI 场景（对标元宝×京东）", "微信 AI 入口 DAU 与元宝×京东实际成交表现", "底线=交易、会员、支付留在山姆体系；拒绝排他"],
-                    ["Ready 供给就绪", "feed 结构化 + 四大入口可见度监测（GEO）+ 支付代扣授权预研", "立即执行，无前置条件", "成本低，情报与数据治理为主"],
-                ],
-                [1.9, 4.4, 3.0, 2.7],
-                "不建议：①把结账交给第三方 AI（全球已证伪）；②在淘宝/抖音竞对生态深度绑定；③等『中立比价 AI』（国内大概率伪命题）。Build 前必答：国内暂无对标 Instacart 的成熟生鲜白标；若出现，以数据不出域/会员隔离/TCO 三判据重评 Build vs Buy。",
-                font_size=10.5, row_h=0.78)
-
-    # ---- 16 90天行动 ----
-    pn += 1
-    table_slide(prs, "行动方案", "90 天三个试点 + 一条谈判线：每项带 KPI 门槛与止损条件", pn,
-                ["#", "试点", "范围", "90 天 KPI 门槛", "止损条件"],
-                [
-                    ["P1", "山姆 App 餐桌助手 MVP", "菜谱→购物车 / 常购清单 / 商品问答；深沪会员灰度 10%；T+0 启动备案材料", "周使用率 ≥15%（分母=灰度内当周活跃会员）；加购转化 ≥ 搜索基线 1.2 倍；客诉率 ≤ 人工", "任一 KPI 连续 4 周 < 门槛 50% → 收缩场景重做"],
-                    ["P2", "AI 可见度与平替风险基线", "500 组问题×豆包/千问/元宝/点点月测（含小象/叮咚/拼多多/美团闪购 AI 动态）；500 SKU feed 改造 POC（设对照组）", "改造组被推荐率较对照组 +5pct 以上（连续两次月测同向）；T1 敞口收窄为实测", "无（纯情报与数据治理投入）"],
-                    ["P3", "会员 AI 售后代理", "企微+小程序退换货/效期问题自动化（含临期品场景）", "自动解决率 ≥40%；满意度不降；单均服务成本 -30%", "错误处理率 >2% 即回退人工"],
-                    ["N1", "腾讯谈判线", "『山姆 Agent 进微信 AI』联合 POC；明确数据与结账边界", "90 天内达成 POC 范围与商务框架意向", "腾讯排他倾向明显 → 转多入口目录接入"],
-                ],
-                [0.6, 2.2, 3.6, 3.3, 2.6],
-                "资源诉求（CTO 决策）：首期 90 天总预算约 200~450 万元（人力 24~36 人月按全成本 6~9 万/人月假设 + 推理 20~80 万 + 数据分摊约 25 万 + 合规咨询 10~30 万；立项讨论用估算，财务核价出准数）；国内合规模型栈选型（混元/DeepSeek/通义）。",
-                font_size=10, row_h=0.8)
-
-    # ---- 17 风险合规 ----
-    pn += 1
-    slide = new_slide(prs, kicker="风险与合规", title="外资零售在华做 AI 导购的六条红线与应对", page_no=pn)
-    bullets(slide, [
-        ("生成式 AI 服务合规", "依据《生成式人工智能服务管理暂行办法》《互联网信息服务算法推荐管理规定》：灰度是否触发备案义务=立项第一周法务定性（P1 首个里程碑）；备案材料 T+0 启动（周期以数月计）；必要时灰度期提供『检索+模板』非生成式兜底"),
-        ("AI 内容标识与个人信息合规", "按《人工智能生成合成内容标识办法》添加标识；会员数据用于推理/个性化须完成个保法告知同意与 PIA；出境场景触发安全评估"),
-        ("数据出境与模型选型", "会员与对话意图数据不得接入境外模型：国内私有化部署 + 数据不出域；与全球团队『方法论共享、数据隔离』"),
-        ("幻觉与错购责任", "低 SKU + 结构化数据源优先；金额敏感操作二次确认；错误率红线 2%"),
-        ("未成年人与代扣授权 / 比价表述", "A4 级自动购买默认关闭、会员主动开启+额度管控；只承诺『山姆内最优方案』，不做全网比价话术"),
-        ("竞争情报误判", "京东系自报数据注水：若按其口径校准投入，会系统性高估对手、错配预算——本报告已全线降级处理"),
-    ], size=12.5)
-    note(slide, "合规项须在 P1 试点立项时同步启动，勿事后补课。")
-
-    # ---- 18 下一步 ----
-    pn += 1
-    slide = new_slide(prs, kicker="下一步", title="研究计划推进与需要 CTO 的三项支持", page_no=pn)
-    bullets(slide, [
-        ("研究推进（本报告为 P1+P2 阶段预读版）",
-         "P3 产品实测：10 款 AI 导购评测协议（10 任务×6 维度，独立双评审盲评）→ P4 专家访谈 8~10 场（腾讯、美团系、GEO 服务商、支付方）→ P5 终版报告与 PPT"),
-        ("质量承诺",
-         "终版按《汇报评分标准》执行独立评审盲评循环：作者与评审分离、轮次盲评、逐维打分、证据强制；加权 ≥4.20 且单维 ≥3.5 方可提交（评分记录随附）"),
-        ("需要 CTO 支持",
-         "①访谈引荐（腾讯智慧零售、全球 Sparky 团队）；②第三方数据预算审批（QuestMobile 等）；③指定业务侧 Sponsor 对齐试点 KPI"),
+    # 5 建议
+    p += 1
+    s = slide_base(prs, "第二章  执行摘要", "三项建议方向", p)
+    bullets(s, [
+        ("站内先行", "在自有App/小程序落地高确定性场景：商品问答、菜谱/清单成车、售后自动化；以转化率与使用率为考核指标"),
+        ("供给侧就绪", "推进商品数据结构化与大模型可读性改造；对主要AI入口建立「被推荐率/被平替率」月度监测"),
+        ("站外合作坚持交易主权", "与通用AI入口合作时采用「插件/小程序跳转、结账留在自有体系」；避免将结账权让渡给第三方AI平台"),
     ], size=14)
-    note(slide, "配套材料：预读文档（约 30 分钟）、评分标准与评分记录、数据底表与图表源文件（可复现）。")
 
-    out_path = OUT / "AI电商行业研究_沃尔玛中国CTO汇报.pptx"
-    prs.save(out_path)
+    # 6-9 全球数据图
+    p += 1
+    s = slide_base(prs, "第三章  全球市场 1/4", "图1  代理式商务规模预测：口径差异决定结论差异", p)
+    add_image(s, "01_global_agentic_forecasts.png", max_h=5.0)
 
-    outline_path = OUT / "pptx_outline.md"
-    outline_path.write_text(
-        "# PPT 文字稿（评审用，自动生成）\n\n"
-        "> 由 `scripts/make_pptx.py` 生成；正式内容以 PPTX 为准。\n"
-        + "\n".join(outline_lines) + "\n",
-        encoding="utf-8",
-    )
-    print(f"已生成：{out_path.relative_to(ROOT)}（{pn} 页）")
-    print(f"已生成：{outline_path.relative_to(ROOT)}")
+    p += 1
+    s = slide_base(prs, "第三章  全球市场 2/4", "图2  美国零售网站AI导流增长", p)
+    add_image(s, "02_us_ai_traffic_growth.png", max_h=5.0)
+
+    p += 1
+    s = slide_base(prs, "第三章  全球市场 3/4", "图3  AI导流质量：转化率与单次访问收入逆转", p)
+    add_image(s, "03_ai_conversion_reversal.png", max_h=5.0)
+
+    p += 1
+    s = slide_base(prs, "第三章  全球市场 4/4", "图6  2025假日季：AI影响约20%全球零售订单", p)
+    add_image(s, "06_holiday_ai_influence.png", max_h=5.0)
+
+    # 10 关键案例
+    p += 1
+    s = slide_base(prs, "第三章  全球市场", "行业案例：对话内代结账受挫，插件+自有结账更稳妥", p)
+    bullets(s, [
+        ("Instant Checkout（2025-09至约2026-03）",
+         "ChatGPT内完成结账的试点上线后收缩；公开报道显示转化明显低于商家自有渠道，错购与体验问题突出"),
+        ("Sparky插件模式（2026-03起）",
+         "沃尔玛自有助手以插件形式进入ChatGPT/Gemini：对话内选品，回自有体系结账；转化约为自有站70%"),
+        ("Amazon Rufus",
+         "2025年使用用户超3亿；购买完成率+60%；约120亿美元增量年化销售（亚马逊财报电话会，公司口径）"),
+        ("Instacart Cart Assistant",
+         "企业级白标AI套件输出给Kroger、Sprouts等，覆盖膳食规划与对话建车（Instacart 2025-11新闻稿）"),
+    ], size=12.5)
+    note(s, "来源：OpenAI公告、媒体交叉报道、亚马逊财报电话会、Instacart官方新闻稿。")
+
+    # 11 双路径
+    p += 1
+    table_slide(prs, "第四章  双路径分析", "路径A与路径B对照", p,
+                ["维度", "路径A：站外2C LLM", "路径B：站内AI导购"],
+                [
+                    ["核心价值", "截获购物决策起点，影响品类与品牌心智", "降低站内决策成本，提升转化与客单"],
+                    ["代表产品", "ChatGPT、Gemini、豆包、千问、元宝", "Rufus、Sparky、淘宝AI万能搜、Cart Assistant"],
+                    ["变现方式", "交易佣金、归因结算、联盟分佣、订阅", "不直接收费；体现为GMV增量与留存"],
+                    ["主要风险", "推荐公正性、幻觉错购、交易权争夺", "推理成本、答案页与广告位冲突"],
+                    ["终局角色", "发现层与部分闭环入口", "交易场内默认决策层"],
+                ],
+                [1.8, 5.1, 5.1],
+                "整理自公开产品进展与本报告第四章；量化数据见后续图表。", fs=11)
+
+    # 12 入口规模
+    p += 1
+    s = slide_base(prs, "第四章  双路径分析", "图4  主要AI购物入口用户规模（可追溯数据）", p)
+    add_image(s, "04_ai_entrance_user_scale.png", max_h=5.0)
+
+    # 13 效果分口径
+    p += 1
+    s = slide_base(prs, "第四章  双路径分析", "图7  站内导购与站外引荐：分口径效果对照", p)
+    add_image(s, "07_instore_ai_scorecard.png", max_h=5.0)
+
+    # 14 中国宏观
+    p += 1
+    s = slide_base(prs, "第五章  中国市场", "图5  中国AI私域电商市场规模与渗透率", p)
+    add_image(s, "05_china_ai_private_ecommerce.png", max_h=5.0)
+
+    # 15 中国格局表
+    p += 1
+    table_slide(prs, "第五章  中国市场", "入口格局：四大阵营", p,
+                ["阵营", "模式", "进展", "数据来源"],
+                [
+                    ["字节：豆包×抖音", "垂直闭环", "MAU 3.83亿；买前问豆包一级入口；订单纳入抖音电商归因", "QuestMobile；官方/媒体"],
+                    ["阿里：千问×淘宝", "垂直闭环", "MAU 1.66亿；对话完成淘宝全链路", "QuestMobile；阿里官宣"],
+                    ["腾讯×京东：元宝", "生态联盟", "对话出商品卡，跳转京东小程序成交", "联合官宣"],
+                    ["内容与其他", "社区AI/站内工具", "小红书点点并入主站；拼多多、快手已上线AI搜索", "36氪、网经社等"],
+                ],
+                [2.2, 1.6, 4.8, 3.4],
+                "仅列可追溯进展；未纳入未经独立验证的自报运营规模数据。", fs=10.5, )
+
+    # 16 产业链
+    p += 1
+    table_slide(prs, "第六章  产业链", "六层结构（按交易功能环节切分）", p,
+                ["层级", "职能", "收入模式", "主要成本"],
+                [
+                    ["L1 模型与算力", "推理与多模态能力", "API、云捆绑、订阅", "训练与推理算力"],
+                    ["L2 入口与流量", "承接购物意图", "佣金、归因、订阅", "推理、获客、合规"],
+                    ["L3 商品与交易", "商品池、交易与售后", "GMV与平台佣金", "运营、渠道费率、feed改造"],
+                    ["L4 交易基建", "协议与支付信任", "通道费、令牌服务", "风控与标准建设"],
+                    ["L5 商家服务", "GEO、SaaS、数字人、监测", "订阅与咨询", "研发与多模型适配"],
+                    ["L6 履约供应链AI", "预测、补货、调度", "效率带来的成本节约", "数据与算法团队"],
+                ],
+                [2.3, 3.2, 3.3, 3.2],
+                "竞合模式：垂直闭环 / 生态联盟与插件 / 中立第三方。详见报告第六章。", fs=11)
+
+    # 17 场景
+    p += 1
+    s = slide_base(prs, "第七章  场景结合点", "综合零售旅程 × 生鲜结构性特征", p)
+    box(s, Inches(0.7), Inches(1.4), Inches(6.0), Inches(5.0), [
+        ("综合零售（按旅程）", 14, True, NAVY),
+        ("需求唤起：站外LLM商品推荐", 12, False, INK),
+        ("方案生成：答案报告式导购", 12, False, INK),
+        ("选品比较：参数与评论提炼", 12, False, INK),
+        ("比价凑单：算优惠、盯价", 12, False, INK),
+        ("下单支付：闭环 vs 跳转自有结账", 12, False, INK),
+        ("履约售后：物流问答与退换自动化", 12, False, INK),
+        ("复购：偏好记忆与补货提醒", 12, False, INK),
+    ])
+    box(s, Inches(6.9), Inches(1.4), Inches(5.8), Inches(5.0), [
+        ("生鲜零售（三类优先组合）", 14, True, NAVY),
+        ("1. 餐桌助手", 12, True, INK),
+        ("对话/语音 + 菜谱成车 + 周期购", 11.5, False, GRAY),
+        ("2. 损耗联动导购", 12, True, INK),
+        ("效期/库存接入推荐，临期与菜谱联动", 11.5, False, GRAY),
+        ("3. 白标AI基建", 12, True, INK),
+        ("面向区域商超输出对话建车能力", 11.5, False, GRAY),
+        ("（参照Instacart Cart Assistant模式）", 11.5, False, GRAY),
+    ])
+    outline.append("  - 综合零售旅程七点；生鲜三类组合")
+
+    # 18 产品机会
+    p += 1
+    s = slide_base(prs, "第八章  产品技术机会", "分角色机会与合规要点", p)
+    bullets(s, [
+        ("平台", "站内助手从问答升级到任务代理；AI答案页商业化规则；用户授权中心（额度/品类/撤销）"),
+        ("品牌与商家", "商品feed结构化与大模型可读性；GEO监测与内容供给；自有助手接入主流AI入口"),
+        ("生鲜与即时零售", "餐桌助手、损耗联动推荐、白标能力输出"),
+        ("合规", "生成式AI与算法推荐备案、内容标识、个人信息保护影响评估、数据出境、未成年人与代扣授权、价格表述合规"),
+    ], size=13)
+
+    # 19 结论
+    p += 1
+    s = slide_base(prs, "第八章  结论与建议", "结论四点与行动优先级", p)
+    bullets(s, [
+        ("结论", "①规模化应用阶段已到；②站外LLM与站内导购长期并存；③「AI发现+零售商成交」更稳健；④生鲜与会员制适配度更高"),
+        ("P0 监测与口径", "区分「影响」与「成交」；对主要AI入口做月度可见度监测"),
+        ("P1 站内试点", "商品问答、清单/菜谱成车、售后自动化；设定转化与客诉门槛"),
+        ("P2 供给就绪", "结构化feed与内容治理，同时服务站内助手与站外被发现"),
+        ("P3 站外接入", "优先插件/小程序跳转、结账自有；明确数据与会员边界"),
+        ("P4 生鲜专项", "评估餐桌助手与损耗联动推荐的投入产出"),
+    ], size=12.5)
+
+    # 20 附录
+    p += 1
+    table_slide(prs, "附录", "图表与数据来源索引", p,
+                ["图号", "内容", "主要来源", "口径要点"],
+                [
+                    ["图1", "规模预测对比", "eMarketer/MS/Bain/McKinsey等", "窄=平台内结账；宽=AI影响/编排"],
+                    ["图2", "美国AI导流增速", "Adobe Digital Insights 2026-04", "AI平台跳转至零售网站的访问"],
+                    ["图3", "转化与RPV逆转", "Adobe Digital Insights", "AI相对非AI渠道"],
+                    ["图4", "入口用户规模", "QuestMobile；OpenAI；Google；亚马逊财报", "WAU/MAU/年度用户不同，仅量级对照"],
+                    ["图5", "中国AI私域电商", "网经社 2026-05", "私域子集，非全量AI电商GMV"],
+                    ["图6", "假日季AI影响", "Salesforce 2025假日季报告", "「影响」宽口径"],
+                    ["图7", "导购与引荐效果", "亚马逊财报；Salesforce；Adobe；Shopify", "两条证据线分列，不可合并"],
+                ],
+                [1.0, 2.4, 4.4, 4.2],
+                "更新数据：修改 data/*.csv 后执行 python3 scripts/make_charts.py && python3 scripts/make_pptx.py",
+                fs=10)
+
+    out = OUT / "AI电商行业研究报告.pptx"
+    prs.save(out)
+    (OUT / "pptx_outline.md").write_text(
+        "# PPT文字稿（自动生成）\n\n" + "\n".join(outline) + "\n", encoding="utf-8")
+    print(f"已生成：{out.relative_to(ROOT)}（{p}页）")
 
 
 if __name__ == "__main__":

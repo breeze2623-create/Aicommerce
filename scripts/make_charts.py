@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
-"""AI 电商行业研究 - 图表样张生成脚本。
-
-用法：python3 scripts/make_charts.py
-数据：data/*.csv（更新数据后重跑本脚本即可刷新 charts/*.png）
-"""
+"""AI电商行业研究报告 — 正式版图表生成脚本。"""
 
 from pathlib import Path
 
@@ -19,7 +15,6 @@ DATA = ROOT / "data"
 OUT = ROOT / "charts"
 OUT.mkdir(exist_ok=True)
 
-# 中文字体（云端 Linux 环境预装文泉驿微米黑）
 plt.rcParams["font.sans-serif"] = ["WenQuanYi Micro Hei", "Droid Sans Fallback", "sans-serif"]
 plt.rcParams["axes.unicode_minus"] = False
 plt.rcParams["figure.dpi"] = 150
@@ -27,26 +22,24 @@ plt.rcParams["savefig.bbox"] = "tight"
 plt.rcParams["axes.edgecolor"] = "#9CA3AF"
 plt.rcParams["axes.linewidth"] = 0.8
 
-C_BLUE = "#2563EB"   # 海外 / 主色
-C_RED = "#DC2626"    # 国内
-C_GREEN = "#059669"
-C_AMBER = "#D97706"
-C_GRAY = "#6B7280"
+C_BLUE = "#1D4ED8"
+C_RED = "#B91C1C"
+C_GREEN = "#047857"
+C_AMBER = "#B45309"
+C_GRAY = "#4B5563"
 C_LIGHT = "#93C5FD"
 
 
 def footer(fig, text):
-    fig.text(0.01, -0.02, text, fontsize=7.5, color=C_GRAY, ha="left", va="top")
+    fig.text(0.01, -0.03, text, fontsize=7.2, color=C_GRAY, ha="left", va="top", wrap=True)
 
 
 def chart_01_global_forecasts():
     df = pd.read_csv(DATA / "global_market_forecasts.csv")
     df["mid"] = (df["低值_十亿美元"] + df["高值_十亿美元"]) / 2
     df = df.sort_values("mid")
-    labels = [
-        f"{r.机构}｜{r.范围} {r.目标年份}" for r in df.itertuples()
-    ]
-    fig, ax = plt.subplots(figsize=(9, 4.8))
+    labels = [f"{r.机构}｜{r.范围} {r.目标年份}" for r in df.itertuples()]
+    fig, ax = plt.subplots(figsize=(9.2, 4.8))
     colors = [C_BLUE if r.范围 == "美国" else C_AMBER for r in df.itertuples()]
     for i, r in enumerate(df.itertuples()):
         lo, hi = r.低值_十亿美元, r.高值_十亿美元
@@ -61,12 +54,17 @@ def chart_01_global_forecasts():
     ax.set_xscale("log")
     ax.set_xlim(100, 12000)
     ax.xaxis.set_major_formatter(mticker.FuncFormatter(lambda v, _: f"{v:,.0f}"))
-    ax.set_xlabel("市场规模预测（十亿美元，对数轴）", fontsize=9)
-    ax.set_title("代理式商务（Agentic Commerce）规模预测：口径与地域/年份叠加，最大相差 35 倍\n——主要差异源于『AI 平台内成交』到『AI 编排/影响的零售收入』的口径谱系（另含美国/全球与 2029/2030 之别）", fontsize=11, loc="left")
+    ax.set_xlabel("预测规模（十亿美元，对数轴）", fontsize=9)
+    ax.set_title("图1  代理式商务规模预测对比（不同机构口径差异显著）", fontsize=12, loc="left", fontweight="bold")
     from matplotlib.patches import Patch
-    ax.legend(handles=[Patch(color=C_BLUE, label="美国口径"), Patch(color=C_AMBER, label="全球口径")], loc="lower right", fontsize=9, frameon=False)
+    ax.legend(handles=[Patch(color=C_BLUE, label="美国口径"), Patch(color=C_AMBER, label="全球口径")],
+              loc="lower right", fontsize=9, frameon=False)
     ax.grid(axis="x", linestyle=":", alpha=0.5)
-    footer(fig, "来源：eMarketer / Morgan Stanley / Bain / McKinsey / Edgar Dunn 公开预测（2025-10~2025-12 发布）。对照项：Gartner 预测 2028 年 >15 万亿美元 B2B 采购由 AI 代理中介（未画入）。整理：AI 电商研究计划，2026-07。")
+    footer(fig,
+           "数据来源：eMarketer、Morgan Stanley、Bain、McKinsey、Edgar Dunn 公开预测（2025年10月—12月发布）。\n"
+           "口径说明：eMarketer仅统计AI平台内完成结账的交易；Morgan Stanley为代理自主执行的购买；Bain含代理发起/影响/完成的购买；"
+           "McKinsey为代理编排的零售收入（含AI影响的决策）。地域与年份差异会进一步放大数值差距。\n"
+           "编制：AI电商行业研究报告｜数据截至2026-07")
     fig.savefig(OUT / "01_global_agentic_forecasts.png")
     plt.close(fig)
 
@@ -74,26 +72,29 @@ def chart_01_global_forecasts():
 def chart_02_us_ai_traffic():
     df = pd.read_csv(DATA / "adobe_ai_traffic.csv")
     per = df[df.panel == "period"]
-    ind = df[df.panel == "industry"]
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11, 4.2))
+    ind = df[df.panel == "industry"].sort_values("同比增速_pct")
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11, 4.3))
     b1 = ax1.bar(per["标签"], per["同比增速_pct"], color=[C_LIGHT, C_BLUE, C_LIGHT, C_LIGHT], width=0.6)
     ax1.bar_label(b1, fmt="+%g%%", fontsize=9.5, padding=2)
-    ax1.set_title("美国零售网站 AI 来源流量同比增速", fontsize=10.5, loc="left")
+    ax1.set_title("美国零售网站AI来源流量同比增速", fontsize=10.5, loc="left")
     ax1.set_ylabel("同比增速（%）", fontsize=9)
     ax1.tick_params(axis="x", labelsize=8.5, rotation=12)
     ax1.grid(axis="y", linestyle=":", alpha=0.5)
     ax1.set_ylim(0, 1350)
 
-    ind = ind.sort_values("同比增速_pct")
-    b2 = ax2.barh(ind["标签"], ind["同比增速_pct"], color=[C_GRAY, C_GRAY, C_GRAY, C_GRAY, C_RED], height=0.55)
+    b2 = ax2.barh(ind["标签"], ind["同比增速_pct"],
+                  color=[C_GRAY, C_GRAY, C_GRAY, C_GRAY, C_RED], height=0.55)
     ax2.bar_label(b2, fmt="+%g%%", fontsize=9.5, padding=3)
-    ax2.set_title("2026Q1 各行业 AI 流量增速：零售遥遥领先", fontsize=10.5, loc="left")
+    ax2.set_title("2026Q1各行业AI流量增速对比", fontsize=10.5, loc="left")
     ax2.set_xlabel("同比增速（%）", fontsize=9)
     ax2.set_xlim(0, 480)
     ax2.grid(axis="x", linestyle=":", alpha=0.5)
-    fig.suptitle("生成式 AI 正在成为零售网站的结构性流量来源（图表 C2）", fontsize=12, x=0.01, ha="left")
-    fig.tight_layout(rect=[0, 0, 1, 0.93])
-    footer(fig, "来源：Adobe Digital Insights（基于美国零售网站超 1 万亿次访问），2026-04 发布；TechCrunch / PYMNTS 交叉验证。整理：AI 电商研究计划，2026-07。")
+    fig.suptitle("图2  美国零售网站生成式AI导流增长", fontsize=12, x=0.01, ha="left", fontweight="bold")
+    fig.tight_layout(rect=[0, 0.04, 1, 0.92])
+    footer(fig,
+           "数据来源：Adobe Digital Insights《季度AI流量报告》（2026年4月发布）。\n"
+           "口径说明：基于Adobe Analytics覆盖的美国零售网站超过1万亿次访问；AI来源流量指从ChatGPT、Gemini、Perplexity等生成式AI平台跳转至零售网站的访问。\n"
+           "编制：AI电商行业研究报告｜数据截至2026-07")
     fig.savefig(OUT / "02_us_ai_traffic_growth.png")
     plt.close(fig)
 
@@ -102,59 +103,62 @@ def chart_03_conversion_reversal():
     df = pd.read_csv(DATA / "conversion_metrics.csv")
     rev = df[df.panel == "reversal"]
     eng = df[df.panel == "engagement"]
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11, 4.2), gridspec_kw={"width_ratios": [1.35, 1]})
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11, 4.3), gridspec_kw={"width_ratios": [1.35, 1]})
 
     conv = rev[rev["指标"].str.contains("转化率")]
     rpv = rev[rev["指标"].str.contains("RPV")]
     x = [0, 1]
     w = 0.32
-    b1 = ax1.bar([i - w / 2 for i in x], conv["数值_pct"], width=w, color=C_BLUE, label="转化率差（AI vs 非 AI）")
-    b2 = ax1.bar([i + w / 2 for i in x], rpv["数值_pct"], width=w, color=C_AMBER, label="单次访问收入差（AI vs 非 AI）")
+    b1 = ax1.bar([i - w / 2 for i in x], conv["数值_pct"], width=w, color=C_BLUE, label="转化率差（AI相对非AI）")
+    b2 = ax1.bar([i + w / 2 for i in x], rpv["数值_pct"], width=w, color=C_AMBER, label="单次访问收入差（AI相对非AI）")
     for b in (b1, b2):
         ax1.bar_label(b, fmt="%+g%%", fontsize=10, padding=2)
     ax1.axhline(0, color="#111827", linewidth=0.9)
     ax1.set_xticks(x)
-    ax1.set_xticklabels(["2025 年 3 月", "2026 年 3 月"], fontsize=10)
+    ax1.set_xticklabels(["2025年3月", "2026年3月"], fontsize=10)
     ax1.set_ylim(-80, 70)
-    ax1.set_title("一年内的历史性逆转：AI 流量从『劣质流量』变为最优渠道", fontsize=10.5, loc="left")
+    ax1.set_title("AI流量质量一年内完成逆转", fontsize=10.5, loc="left")
     ax1.legend(fontsize=8.5, frameon=False, loc="lower right")
     ax1.grid(axis="y", linestyle=":", alpha=0.5)
 
     b3 = ax2.bar(eng["指标"], eng["数值_pct"], color=C_GREEN, width=0.5)
     ax2.bar_label(b3, fmt="+%g%%", fontsize=10, padding=2)
-    ax2.set_title("2026-03：AI 来源访客参与度全面占优", fontsize=10.5, loc="left")
-    ax2.set_ylabel("相对非 AI 来源（%）", fontsize=9)
+    ax2.set_title("2026年3月：AI来源访客参与度", fontsize=10.5, loc="left")
+    ax2.set_ylabel("相对非AI来源（%）", fontsize=9)
     ax2.set_ylim(0, 60)
     ax2.grid(axis="y", linestyle=":", alpha=0.5)
-    fig.suptitle("AI 导流质量逆转（图表 C3）", fontsize=12, x=0.01, ha="left")
-    fig.tight_layout(rect=[0, 0, 1, 0.93])
-    footer(fig, "来源：Adobe Digital Insights，2026-04。注：2025-03 RPV 原文口径为『非 AI 流量单访问收入比 AI 高 128%』，换算为 AI 相对非 AI 约 -56%。整理：AI 电商研究计划，2026-07。")
+    fig.suptitle("图3  AI导流质量变化：转化率与单次访问收入", fontsize=12, x=0.01, ha="left", fontweight="bold")
+    fig.tight_layout(rect=[0, 0.04, 1, 0.92])
+    footer(fig,
+           "数据来源：Adobe Digital Insights（2026年4月发布）。\n"
+           "口径说明：转化率=访问中完成购买的比例；RPV=单次访问收入。正值表示AI来源优于非AI来源。"
+           "2025年3月RPV原文为「非AI比AI高128%」，换算为AI相对非AI约-56%。\n"
+           "编制：AI电商行业研究报告｜数据截至2026-07")
     fig.savefig(OUT / "03_ai_conversion_reversal.png")
     plt.close(fig)
 
 
 def chart_04_entrance_scale():
     df = pd.read_csv(DATA / "assistant_scale.csv").sort_values("规模_亿")
-    fig, ax = plt.subplots(figsize=(9.5, 4.8))
+    fig, ax = plt.subplots(figsize=(9.5, 4.6))
     colors = [C_RED if r == "国内" else C_BLUE for r in df["区域"]]
-    bars = ax.barh(df["产品"], df["规模_亿"], color=colors, height=0.58, alpha=0.92)
+    bars = ax.barh(df["产品"], df["规模_亿"], color=colors, height=0.55, alpha=0.92)
     for bar, r in zip(bars, df.itertuples()):
-        low_trust = str(r.置信度).startswith("低")
-        if low_trust:
-            bar.set_hatch("///")
-            bar.set_alpha(0.45)
-            bar.set_edgecolor("#7F1D1D")
-        label = f"{r.规模_亿:g} 亿（{r.口径}）"
-        if low_trust:
-            label += "｜低置信·待三方核实"
         ax.text(bar.get_width() + 0.08, bar.get_y() + bar.get_height() / 2,
-                label, va="center", fontsize=8.6,
-                color="#7F1D1D" if low_trust else "#111827")
-    ax.set_xlim(0, 12.2)
-    ax.set_xlabel("用户/设备规模（亿）——口径各异，仅作量级对照", fontsize=9)
-    ax.set_title("国内外 AI 购物入口规模对照（图表 C4）\n红=国内，蓝=海外；斜纹=低置信（自报且存在注水风险）；WAU/MAU/年度用户/设备数不可直接混比", fontsize=11, loc="left")
+                f"{r.规模_亿:g}亿｜{r.口径}｜{r.时点}", va="center", fontsize=8.5)
+    ax.set_xlim(0, 12.5)
+    ax.set_xlabel("规模（亿）", fontsize=9)
+    ax.set_title("图4  主要AI购物相关入口用户规模对照", fontsize=12, loc="left", fontweight="bold")
+    from matplotlib.patches import Patch
+    ax.legend(handles=[Patch(color=C_RED, label="国内"), Patch(color=C_BLUE, label="海外")],
+              loc="lower right", fontsize=9, frameon=False)
     ax.grid(axis="x", linestyle=":", alpha=0.5)
-    footer(fig, "来源：OpenAI 披露、QuestMobile（2026-06）、亚马逊/京东财报与发布会、公开报道。置信度分级见《数据置信度分级说明》；京东系自报数据按内部研判降级为低置信，仅作方向参考。整理：AI 电商研究计划，2026-07。")
+    footer(fig,
+           "数据来源：QuestMobile（豆包、千问，2026年6月）；OpenAI公开披露（ChatGPT WAU）；Google公开披露（Gemini MAU）；"
+           "亚马逊2025Q4财报电话会（Rufus年度使用用户）；Perplexity公司披露。\n"
+           "口径说明：WAU=周活跃用户，MAU=月活跃用户，Rufus为年度累计使用用户。不同口径不可直接横向比较，本图仅作量级对照。"
+           "本图仅收录可追溯至第三方监测或公司财报/官方披露的数据。\n"
+           "编制：AI电商行业研究报告｜数据截至2026-07")
     fig.savefig(OUT / "04_ai_entrance_user_scale.png")
     plt.close(fig)
 
@@ -167,52 +171,64 @@ def chart_05_china_private():
     ax.bar_label(bars, fmt="%.2f", fontsize=9.5, label_type="center", color="white", fontweight="bold")
     ax.set_ylabel("市场规模（万亿元）", fontsize=9)
     ax.set_ylim(0, 4.0)
-    ax.set_title("中国 AI 私域电商市场规模与渗透率（2025 实际 + 2026–2030 预测，图表 C5）\n注意：口径为『私域电商』子集；全量『中国 AI 电商 GMV』尚无权威口径（研究需自建估算）", fontsize=10.5, loc="left")
+    ax.set_title("图5  中国AI私域电商市场规模与渗透率（2025—2030）", fontsize=12, loc="left", fontweight="bold")
     ax2 = ax.twinx()
-    ax2.plot(df["年份"].astype(str), df["渗透率_pct"], color=C_BLUE, marker="o", linewidth=2, label="AI 渗透率（右轴）")
+    ax2.plot(df["年份"].astype(str), df["渗透率_pct"], color=C_BLUE, marker="o", linewidth=2)
     for x_, y_ in zip(df["年份"].astype(str), df["渗透率_pct"]):
-        ax2.annotate(f"{y_:.1f}%", (x_, y_), textcoords="offset points", xytext=(0, 10), fontsize=8.5, color=C_BLUE, ha="center")
+        ax2.annotate(f"{y_:.1f}%", (x_, y_), textcoords="offset points", xytext=(0, 10),
+                     fontsize=8.5, color=C_BLUE, ha="center")
     ax2.set_ylabel("渗透率（%）", fontsize=9, color=C_BLUE)
     ax2.set_ylim(0, 80)
     ax2.tick_params(axis="y", labelcolor=C_BLUE)
     ax.grid(axis="y", linestyle=":", alpha=0.4)
-    footer(fig, "来源：网经社电子商务研究中心《2025 年度中国私域电商市场数据报告》（2026-05 发布，电数宝数据库）。深红=实际值，浅红=预测值。整理：AI 电商研究计划，2026-07。")
+    from matplotlib.patches import Patch
+    ax.legend(handles=[Patch(color=C_RED, label="实际值"), Patch(color="#F87171", label="预测值"),
+                       plt.Line2D([0], [0], color=C_BLUE, marker="o", label="渗透率（右轴）")],
+              loc="upper left", fontsize=8.5, frameon=False)
+    footer(fig,
+           "数据来源：网经社电子商务研究中心《2025年度中国私域电商市场数据报告》（2026年5月发布，电数宝数据库）。\n"
+           "口径说明：统计对象为「AI私域电商」（私域电商中由AI驱动的部分），非全量中国AI电商GMV。"
+           "渗透率=AI私域电商规模/私域电商总规模。深红柱为2025年实际值，浅红柱为2026—2030年预测值。\n"
+           "编制：AI电商行业研究报告｜数据截至2026-07")
     fig.savefig(OUT / "05_china_ai_private_ecommerce.png")
     plt.close(fig)
 
 
 def chart_06_holiday():
-    df = pd.read_csv(DATA / "salesforce_holiday.csv")
-    sales = df[df.panel == "sales"]
-    growth = df[df.panel == "growth"]
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11, 4.2), gridspec_kw={"width_ratios": [1.3, 1]})
-
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11, 4.3), gridspec_kw={"width_ratios": [1.3, 1]})
     pairs = [("2025假日季\n(11.1–12.31)", 12900, 2620), ("Cyber Week\n(11.25–12.1)", 3366, 670)]
     x = range(len(pairs))
     w = 0.34
     b1 = ax1.bar([i - w / 2 for i in x], [p[1] for p in pairs], width=w, color=C_GRAY, label="全球线上销售总额")
-    b2 = ax1.bar([i + w / 2 for i in x], [p[2] for p in pairs], width=w, color=C_BLUE, label="其中 AI 与 Agent 影响")
+    b2 = ax1.bar([i + w / 2 for i in x], [p[2] for p in pairs], width=w, color=C_BLUE, label="其中AI与Agent影响")
     ax1.bar_label(b1, fmt="{:,.0f}", fontsize=9)
     ax1.bar_label(b2, fmt="{:,.0f}", fontsize=9)
     for i, p in enumerate(pairs):
-        ax1.annotate(f"占 {p[2]/p[1]*100:.0f}% 订单", (i + w / 2, p[2]), textcoords="offset points", xytext=(0, 16), ha="center", fontsize=9, color=C_BLUE, fontweight="bold")
+        ax1.annotate(f"占{p[2]/p[1]*100:.0f}%订单", (i + w / 2, p[2]),
+                     textcoords="offset points", xytext=(0, 16), ha="center", fontsize=9,
+                     color=C_BLUE, fontweight="bold")
     ax1.set_xticks(list(x))
     ax1.set_xticklabels([p[0] for p in pairs], fontsize=9.5)
     ax1.set_ylabel("销售额（亿美元）", fontsize=9)
-    ax1.set_title("2025 假日季：AI 与 Agent 影响 20% 全球零售订单", fontsize=10.5, loc="left")
+    ax1.set_title("假日季：AI影响的销售规模", fontsize=10.5, loc="left")
     ax1.legend(fontsize=8.5, frameon=False)
     ax1.grid(axis="y", linestyle=":", alpha=0.5)
 
-    b3 = ax2.bar(growth["标签"].str.replace("的零售商", "\n的零售商"), growth["数值"], color=[C_GREEN, C_GRAY], width=0.45)
+    growth_labels = ["部署自有Agent\n的零售商", "未部署\n自有Agent"]
+    growth_vals = [6.2, 3.9]
+    b3 = ax2.bar(growth_labels, growth_vals, color=[C_GREEN, C_GRAY], width=0.45)
     ax2.bar_label(b3, fmt="%.1f%%", fontsize=10.5)
-    ax2.set_ylabel("2025 假日季销售同比增速（%）", fontsize=9)
+    ax2.set_ylabel("假日季销售同比增速（%）", fontsize=9)
     ax2.set_ylim(0, 8)
-    ax2.set_title("部署自有品牌 Agent 的零售商增速快 59%", fontsize=10.5, loc="left")
-    ax2.tick_params(axis="x", labelsize=9)
+    ax2.set_title("自有品牌Agent与销售增速", fontsize=10.5, loc="left")
     ax2.grid(axis="y", linestyle=":", alpha=0.5)
-    fig.suptitle("假日季 AI 影响力（Salesforce 口径：『AI 影响的销售』≠『AI 内成交』，图表 C6）", fontsize=12, x=0.01, ha="left")
-    fig.tight_layout(rect=[0, 0, 1, 0.92])
-    footer(fig, "来源：Salesforce 2025 假日购物报告 / Cyber Week 报告（基于 15 亿+ 消费者购物数据）。另：假日季 Agent 自主执行动作 +142%，AI 流量转化率约为社交流量 9 倍。整理：AI 电商研究计划，2026-07。")
+    fig.suptitle("图6  2025假日季AI对零售销售的影响（Salesforce口径）", fontsize=12, x=0.01, ha="left", fontweight="bold")
+    fig.tight_layout(rect=[0, 0.04, 1, 0.91])
+    footer(fig,
+           "数据来源：Salesforce《2025假日购物报告》及Cyber Week报告（基于超过15亿消费者购物数据）。\n"
+           "口径说明：「AI与Agent影响的销售」指AI参与推荐、客服或决策过程的订单销售额，不等于在AI对话界面内完成结账的交易。"
+           "增速对比口径为假日季销售同比增速。另：假日季Agent自主执行动作同比+142%。\n"
+           "编制：AI电商行业研究报告｜数据截至2026-07")
     fig.savefig(OUT / "06_holiday_ai_influence.png")
     plt.close(fig)
 
@@ -221,38 +237,34 @@ def chart_07_scorecard():
     df = pd.read_csv(DATA / "instore_ai_scorecard.csv")
     inside = df[df["证据线"] == "站内导购"].sort_values("数值_pct")
     referral = df[df["证据线"] == "AI引荐流量"].sort_values("数值_pct")
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11.5, 4.6), gridspec_kw={"width_ratios": [1.25, 1]})
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11.5, 4.5), gridspec_kw={"width_ratios": [1.2, 1]})
 
     def draw(ax, sub, xmax):
         colors = [C_GREEN if c == "效果提升" else C_BLUE for c in sub["类别"]]
         bars = ax.barh(sub["指标"], sub["数值_pct"], color=colors, height=0.55)
         for bar, r in zip(bars, sub.itertuples()):
-            low_trust = str(r.置信度).startswith("低")
-            if low_trust:
-                bar.set_hatch("///")
-                bar.set_alpha(0.45)
-                bar.set_edgecolor("#7F1D1D")
-            label = f"+{r.数值_pct:g}%" + ("（低置信）" if low_trust else "")
-            ax.text(bar.get_width() + xmax * 0.02, bar.get_y() + bar.get_height() / 2, label,
-                    va="center", fontsize=9, color="#7F1D1D" if low_trust else "#111827")
+            ax.text(bar.get_width() + xmax * 0.02, bar.get_y() + bar.get_height() / 2,
+                    f"+{r.数值_pct:g}%", va="center", fontsize=9)
         ax.set_xlim(0, xmax)
         ax.grid(axis="x", linestyle=":", alpha=0.5)
-        ax.tick_params(axis="y", labelsize=8.8)
+        ax.tick_params(axis="y", labelsize=8.5)
 
-    draw(ax1, inside, 265)
-    ax1.set_title("证据线 A：站内 AI 导购（交易场内工具）", fontsize=10.5, loc="left")
+    draw(ax1, inside, 250)
+    ax1.set_title("路径B：站内AI导购效果", fontsize=10.5, loc="left")
     ax1.set_xlabel("提升幅度 / 同比增速（%）", fontsize=9)
     draw(ax2, referral, 70)
-    ax2.set_title("证据线 B：站外 AI 引荐流量到站质量", fontsize=10.5, loc="left")
-    ax2.set_xlabel("相对非 AI 渠道的优势（%）", fontsize=9)
+    ax2.set_title("路径A相关：站外AI引荐到站质量", fontsize=10.5, loc="left")
+    ax2.set_xlabel("相对非AI渠道的优势（%）", fontsize=9)
     from matplotlib.patches import Patch
-    ax1.legend(handles=[Patch(color=C_GREEN, label="效果指标"), Patch(color=C_BLUE, label="使用规模增长（YoY）"),
-                        Patch(facecolor="#93C5FD", hatch="///", edgecolor="#7F1D1D", label="斜纹=低置信（自报·注水风险）")],
+    ax1.legend(handles=[Patch(color=C_GREEN, label="效果指标"), Patch(color=C_BLUE, label="使用规模增长")],
                fontsize=8.5, frameon=False, loc="lower right")
-    fig.suptitle("AI 导购效果记分卡：站内导购与站外引荐两条证据线分开呈现（图表 C7）\nRufus 2025 年带来约 120 亿美元增量年化销售（公司口径）；Walmart：LLM 内自有插件转化≈自有站 70%，平台代结账仅≈1/3",
-                 fontsize=11, x=0.01, ha="left")
-    fig.tight_layout(rect=[0, 0, 1, 0.86])
-    footer(fig, "来源：亚马逊 2025Q3/Q4 财报电话会（公司口径）、Salesforce（2025 假日季）、Adobe（2026-03）、Shopify（2026-05）、京东 618 发布会（2026-05，按内部研判降级为低置信）。两条证据线口径不同，不可合并为单一区间。整理：AI 电商研究计划（2026-07）")
+    fig.suptitle("图7  站内AI导购与站外AI引荐：分口径效果对照", fontsize=12, x=0.01, ha="left", fontweight="bold")
+    fig.tight_layout(rect=[0, 0.06, 1, 0.90])
+    footer(fig,
+           "数据来源：亚马逊2025Q3/Q4财报电话会；Salesforce 2025假日季报告；Adobe Digital Insights（2026-03）；Shopify（2026-05）。\n"
+           "口径说明：左图为站内AI导购工具自身效果（用户完成率、MAU/交互增速、部署Agent的零售商增速溢价）；"
+           "右图为站外AI平台引荐流量到零售网站后的转化/RPV优势。两条证据线口径不同，不可合并为单一区间。\n"
+           "编制：AI电商行业研究报告｜数据截至2026-07")
     fig.savefig(OUT / "07_instore_ai_scorecard.png")
     plt.close(fig)
 
