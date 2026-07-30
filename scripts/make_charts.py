@@ -529,7 +529,7 @@ def fig08_scenario():
     scen_style = {"保守": C_PALE, "中性": C_BLUE, "乐观": C_AMBER}
     ymax = sc["日均有效商品浏览量_万次"].max() * 1.42
 
-    fig, axes = plt.subplots(1, 2, figsize=(12.0, 5.0), sharey=True)
+    fig, axes = plt.subplots(1, 2, figsize=(12.0, 5.0))
     for ax, product in zip(axes, ["淘宝AI导购", "千问电商场景"]):
         sub = sc[sc.产品 == product]
         base = sub[sub.时点 == "2026年中"].iloc[0]
@@ -551,19 +551,24 @@ def fig08_scenario():
         ax.set_title(product, fontsize=11, loc="left", fontweight="bold")
         ax.grid(axis="y", linestyle=":", alpha=0.45)
         ax.legend(fontsize=8.5, frameon=False, ncol=2, loc="upper left")
-        ax.set_ylim(0, ymax)
         lo = sub[sub.时点 == "2026年中"]["日均有效商品浏览量_万次"].iloc[0]
         hi = sub["日均有效商品浏览量_万次"].max()
-        ax.text(0.02, 0.80, f"本面板内部跨度：{lo:.0f} → {hi:.0f}万次／日（{hi / lo:.1f}倍）",
-                transform=ax.transAxes, fontsize=8.4, color=C_GRAY, ha="left", va="top")
-    axes[0].set_ylabel("日均有效商品浏览量（万次／日）", fontsize=9)
+        # 两面板各用自身量程以保证面板内可读；纵轴上限统一按「基期的20倍」缩放，
+        # 使两面板的柱高在视觉上表达相同的「相对基期的倍数」，从而仍可跨面板比较。
+        ax.set_ylim(0, lo * 20)
+        ax.set_ylabel("日均有效商品浏览量（万次／日）", fontsize=9)
+        ax.text(0.02, 0.79, f"纵轴上限＝本侧基期×20；柱高表达相对基期的倍数，可跨面板比较",
+                transform=ax.transAxes, fontsize=7.8, color=C_GRAY, ha="left", va="top")
+        ax.text(0.02, 0.725, f"本面板内部跨度：{lo:.0f} → {hi:.0f}万次／日（相对基期{hi / lo:.1f}倍）",
+                transform=ax.transAxes, fontsize=8.2, color=C_GRAY, ha="left", va="top")
 
     suptitle(fig, "图8  情景测算：两侧驱动结构不同——淘宝靠深度与规模双轮，千问几乎全靠规模（非预测）",
                  fontsize=11.5, x=0.01, ha="left", fontweight="bold")
     fig.tight_layout(rect=[0, 0.05, 1, 0.92])
     footer(fig,
            "数据来源：2026年中基期为业务方提供的内部运营口径数据（见图7）；2027—2028年为本报告按公开锚点设定假设后的测算，非任何机构预测。\n"
-           "读图提示：两面板「共用同一纵轴」，可直接比较——2026年中两侧基期接近（55对43万次／日），到2028年中乐观档才拉开约2.8倍。"
+           "读图提示：两面板各用自身量程，但**纵轴上限统一设为本侧基期的20倍**，因此柱高表达的是「相对基期的倍数」，可跨面板比较；"
+           "绝对值请读柱上数字。2026年中两侧基期接近（55对43万次／日），到2028年中乐观档拉开约2.8倍。"
            "柱上三行依次为有效商品浏览量、DAU、人均IPV，便于核对乘积来源；图表与报告正文共用同一取整规则（ROUND_HALF_UP）。\n"
            "测算方法：日均有效商品浏览量＝DAU×人均IPV，两项分别按情景假设的年增长倍数逐期复利推演"
            "（假设明细见 data/instore_scenario_assumptions.csv，含展示取整列的中间结果见 data/_computed_scenarios.csv）。\n"
