@@ -2,7 +2,7 @@
 """AI电商行业研究报告 — 图表生成脚本。
 
 图表编号与报告正文一致：
-  图1  全球AI引荐流量：历史增速与累计指数情景外推
+  图1  美国零售网站AI引荐流量：已实现增速与定基指数情景外推
   图2  AI引荐流量质量：转化率与单次访问收入
   图3  2025假日季AI对零售销售的影响
   图4  代理式商务规模预测对比
@@ -120,7 +120,14 @@ def _wrap(text, budget):
             line += tok
             used += w
         out.append(line.rstrip())
-    return "\n".join(out)
+    # 避免标点或极短片段孤立成行（如换行后只剩一个句号）
+    merged = []
+    for ln in out:
+        if merged and _visual_len(ln) <= 2 and all(not (c.isalnum() or ord(c) > 0x2E7F) or c in "。，；：、）」" for c in ln):
+            merged[-1] += ln
+        else:
+            merged.append(ln)
+    return "\n".join(merged)
 
 
 def footer(fig, text):
@@ -160,7 +167,7 @@ def compute_scenarios():
 
 
 def compute_traffic_index():
-    """AI引荐流量累计指数：以2025Q1=100，按增速年保留系数外推。"""
+    """AI引荐流量定基水平指数：以2025Q1=100，按增速年保留系数外推。"""
     df = pd.read_csv(DATA / "ai_referral_traffic.csv")
     g26 = df[(df.panel == "period") & (df["标签"] == "2026Q1")]["同比增速_pct"].iloc[0] / 100
     params = df[df.panel == "scenario_param"]
@@ -214,19 +221,19 @@ def fig01_referral_traffic():
     ax2.axvspan(1.0, 3.35, color="#F1F5F9", zorder=0)
     ax2.text(2.15, 3200, "情景测算区间", fontsize=8.5, color=C_GRAY, ha="center")
     ax2.set_xlim(-0.25, 3.35)
-    ax2.set_ylabel("累计流量指数（2025Q1=100）", fontsize=9)
+    ax2.set_ylabel("定基流量指数（2025Q1=100，非累计总量）", fontsize=9)
     ax2.set_ylim(0, 3700)
-    ax2.set_title("② 情景外推：AI引荐流量累计指数（2025Q1=100）", fontsize=10.5, loc="left")
+    ax2.set_title("② 情景外推：AI引荐流量定基水平指数（2025Q1=100，非累计总量）", fontsize=10.5, loc="left")
     ax2.legend(fontsize=8.2, frameon=False, loc="upper left")
     ax2.grid(axis="y", linestyle=":", alpha=0.5)
 
-    suptitle(fig, "图1  美国零售网站AI引荐流量：已实现增速与累计指数情景外推",
+    suptitle(fig, "图1  美国零售网站AI引荐流量：已实现增速与定基指数情景外推",
                  fontsize=12, x=0.01, ha="left", fontweight="bold")
     fig.tight_layout(rect=[0, 0.04, 1, 0.91])
     footer(fig,
            "数据来源：左图为Adobe Digital Insights《季度AI流量报告》（2026年4月发布）实际值；右图2026Q1为同一来源实际值，2027—2028Q1为本报告测算。\n"
            "口径说明：AI引荐流量指从ChatGPT、Gemini、Perplexity等生成式AI平台跳转至零售网站的访问，基于Adobe Analytics覆盖的美国零售网站超1万亿次访问；不含中国市场。"
-           "累计指数以2025Q1=100，按各期同比增速复利累乘。\n"
+           "定基指数以2025Q1=100，按各期同比增速复利累乘得到各期的流量水平，不是流量累计总量。\n"
            "测算假设：2027Q1与2028Q1同比增速＝上一年同比增速×年保留系数（保守30%／中性40%／乐观55%）。系数为设定值而非推导值：已观测的两个收敛比分别为"
            "269%÷1151%＝0.23（3个月）与269%÷393%＝0.68，二者差异主要来自2025年12月为假日季峰值，含季节性成分，直接年化（0.23⁴≈0.003）会得到近乎归零的结果，"
            "与渠道仍在扩张的事实矛盾。故本报告不由单期观测外推，改为给出一个覆盖面较宽的系数区间，读者可自行替换参数复算。\n"
@@ -315,7 +322,7 @@ def fig03_holiday():
     fig.tight_layout(rect=[0, 0.04, 1, 0.91])
     footer(fig,
            "数据来源：Salesforce《2025假日购物报告》及Cyber Week报告，基于超过15亿消费者的购物数据。\n"
-           "口径说明：「AI与Agent影响的销售」指AI参与推荐、客服或决策过程的订单销售额，属宽口径，不等于在AI对话界面内完成结账的交易（后者约低一个数量级，参见图4）。\n"
+           "口径说明：「AI与Agent影响的销售」指AI参与推荐、客服或决策过程的订单销售额，属宽口径，不等于在AI对话界面内完成结账的交易（两者地域与周期不同，不可相除取倍数；量级参照见图4）。\n"
            "读图提示：柱高与柱上标注均为**销售额**口径；Salesforce另按**订单**口径给出「AI影响约20%订单」，两个口径数值接近但不等价，不可互换引用。\n"
            "口径提示：右图为部署与未部署自有品牌Agent两组零售商的销售增速对比，属观察性分组，未控制企业规模与品类结构差异；「自有品牌Agent」为企业侧Agent的宽口径，"
            "不等同于站内AI导购工具，故未纳入图9的站内导购证据线。另：假日季Agent自主执行动作同比+142%。\n" + COMPILER)
@@ -367,7 +374,7 @@ def fig04_forecasts():
            "口径说明：eMarketer仅统计在AI平台内完成结账的交易（窄口径）；Morgan Stanley为代理自主执行的购买；Bain含代理发起／影响／完成的购买；"
            "McKinsey为代理编排的零售收入（含AI影响决策，宽口径）；Edgar Dunn为零售交易流。\n"
            "读图提示：横轴为对数轴。**颜色编码口径宽窄**（地域与年份已写在纵轴标签内）；菱形标记为机构点估计，线段为机构给出的区间，两者不可混读。"
-           "窄口径（蓝）与宽口径（橙）相差约一个数量级以上，差距大于同口径内不同机构之间的差距——这是本图要说明的主要事实。"
+           "读法（倍数须按可比配对给出）：同地域同年份（美国2030年）表中无窄口径数据点，可比的是中口径下限1900亿至宽口径上限10000亿，相差约5.3倍；窄口径对宽口径需跨年份——eMarketer美国2029年1440亿对McKinsey美国2030年9000至10000亿，相差约6.3至6.9倍。本图不使用「相差一个数量级」这一表述。口径宽窄造成的差距大于同口径内不同机构之间的差距，这是本图要说明的主要事实。"
            "各条目标年份与地域不同，不可直接相加或取均值。\n" + COMPILER)
     fig.savefig(OUT / "fig04_agentic_market_forecasts.png")
     plt.close(fig)
@@ -540,6 +547,10 @@ def fig08_scenario():
         ax.grid(axis="y", linestyle=":", alpha=0.45)
         ax.legend(fontsize=8.5, frameon=False, ncol=2, loc="upper left")
         ax.set_ylim(0, ymax)
+        lo = sub[sub.时点 == "2026年中"]["日均有效商品浏览量_万次"].iloc[0]
+        hi = sub["日均有效商品浏览量_万次"].max()
+        ax.text(0.985, 0.70, f"本面板内部跨度：{lo:.0f} → {hi:.0f}万次／日（{hi / lo:.1f}倍）",
+                transform=ax.transAxes, fontsize=8.4, color=C_GRAY, ha="right", va="top")
     axes[0].set_ylabel("日均有效商品浏览量（万次／日）", fontsize=9)
 
     suptitle(fig, "图8  情景测算：两侧驱动结构不同——淘宝靠深度与规模双轮，千问几乎全靠规模（非预测）",
@@ -569,8 +580,8 @@ def fig09_scorecard():
     df = pd.read_csv(DATA / "effect_scorecard.csv")
     groups = [
         ("① 使用者 对 未使用者\n（站内自有导购）", "使用者对未使用者", 90, "相对未使用者的提升（%）"),
-        ("② AI渠道 对 非AI渠道\n（站外AI引荐）", "AI渠道对非AI渠道", 90, "相对非AI渠道的优势（%）"),
-        ("③ 同比增速\n（规模增长，两条证据线并列）", "同比增速", 470, "同比增速（%）"),
+        ("② AI渠道 对 非AI渠道\n（站外AI引荐）", "AI渠道对非AI渠道", 90, "相对非AI渠道的优势（%）：\n转化率或单次访问收入，见标签"),
+        ("③ 同比增速\n（规模增长，两条证据线并列）", "同比增速", 470, "同比增速（%）：\n访问／交互／用户，见标签"),
     ]
     fig, axes = plt.subplots(1, 3, figsize=(13.0, 4.3), gridspec_kw={"width_ratios": [0.72, 1.15, 1.25]})
     for ax, (title, key, xmax, xlabel) in zip(axes, groups):
@@ -598,7 +609,7 @@ def fig09_scorecard():
            "本图的主要事实：面板①只有一根柱——站内AI导购在全球范围内仅有Amazon Rufus一个公开的效果数据点，且为观察性对比。"
            "这既说明该方向的公开证据基础很薄，也说明自建实验能力是获得可决策数字的唯一途径。\n"
            "因果性提示：面板①与②的全部数值均为观察性对比。「Rufus使用者购买完成率+60%」中主动使用AI工具的用户购买意向本就更强，存在自选择偏差；"
-           "Adobe与Shopify的渠道对比未控制访客构成差异，且同期AI渠道流量增至约4.9倍（累计指数100→493），访客构成必然发生迁移。均应视为相关性上限而非因果效应。\n"
+           "Adobe与Shopify的渠道对比未控制访客构成差异，且同期AI渠道流量大幅扩张（Q1对Q1定基指数100→493即4.93倍，3月对3月约3.7倍），访客构成必然发生迁移。均应视为相关性上限而非因果效应。\n"
            "同构造差异说明：Adobe（+42%）与Shopify（+54%）测量同一构造但相差12个百分点，来自面板差异——Adobe覆盖美国大型零售网站，"
            "Shopify以中小与DTC商家为主，且Shopify未披露完整方法。两者应作为区间理解（约+42%～+54%），不取单点。\n"
            "未纳入说明：Salesforce「部署自有品牌Agent的零售商增速6.2%对未部署3.9%」为企业层分组对比（第三种对照构造），"
@@ -624,7 +635,7 @@ if __name__ == "__main__":
         print(" -", path.relative_to(ROOT))
     print("\n情景测算结果：")
     print(pd.read_csv(DATA / "_computed_scenarios.csv")[["产品","情景","时点","DAU_展示","人均IPV_展示","浏览量_展示"]].to_string(index=False))
-    print("\nAI引荐流量累计指数：")
+    print("\nAI引荐流量定基指数：")
     for name, s in compute_traffic_index().items():
         idx = ", ".join(f"{v:,.0f}" for v in s["index"])
         gro = ", ".join("—" if g is None else f"+{g:.0%}" for g in s["growth"])

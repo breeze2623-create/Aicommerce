@@ -7,9 +7,10 @@
 | 文件 | 说明 |
 |---|---|
 | `report/AI电商行业研究报告.md` | 研究报告正文 |
-| `report/AI电商行业研究报告.pptx` | 汇报PPT（37页，16:9） |
+| `report/AI电商行业研究报告.pptx` | 汇报PPT（38页，16:9） |
 | `report/pptx_outline.md` | PPT文字稿（自动生成） |
-| `charts/*.png` | 报告配套图表（每张均附数据来源、口径说明与编制说明） |
+| `charts/*.png` | 报告版图表（内嵌结论式标题与四段式脚注，供文档独立阅读） |
+| `charts/slide/*.png` | 演示版图表（去内嵌标题与脚注，由PPT页面标题与页级注承载） |
 
 ## 报告章节结构
 
@@ -26,7 +27,7 @@
     1.7 站内AI导购：有效商品浏览量情景测算
     1.8 分析与建议
 二、主要业务模式分析
-    2.1 模式分类框架（按结账界面 × Merchant of Record）
+    2.1 模式分类框架（结账界面 × Merchant of Record × 入口与交易主体，另设第四维度区分M3a/M3b）
     2.2 通用AI电商导购案例
     2.3 零售商与平台自有AI导购案例（重点：Amazon Rufus）
     2.4 经验小结
@@ -53,7 +54,7 @@
 
 四项口径纪律：
 
-1. 区分「AI影响的销售」与「AI界面内完成的交易」，二者相差一个数量级以上
+1. 区分「AI影响的销售」与「AI界面内完成的交易」——本报告未取得同地域同周期的配对数据，故不给出二者的倍数关系，但二者不在同一量级
 2. 区分观察性对比与因果效应，「使用者相对未使用者提升X%」应视为相关性上限
 3. 区分实测、机构预测与本报告测算，测算须标注全部假设与锚点
 4. 区间不取单点；图表因绘图需要取端点时，标签保留原始区间并在图注说明
@@ -78,7 +79,8 @@ scripts/make_pptx.py    # PPT生成
 ## 更新方式
 
 ```bash
-python3 scripts/make_charts.py   # 重新生成 charts/*.png 与 data/_computed_scenarios.csv
+python3 scripts/make_charts.py            # 报告版图表 + data/_computed_scenarios.csv
+python3 scripts/make_charts.py --slides   # 演示版图表（charts/slide/）
 python3 scripts/make_pptx.py     # 重新生成 PPT 与文字稿
 ```
 
