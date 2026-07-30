@@ -10,13 +10,13 @@
 **切分维度**：按「一笔 AI 购物交易发生所必需的功能环节」纵向分为六层（L1–L6），层内按商业模式横向细分。检验标准：
 
 - **不重**：每个玩家按「主要收入来源对应的层」归位，跨层玩家（如 Amazon 既是入口又是交易平台）在主层立档、其他层标注「兼任」；
-- **不漏**：任何一笔 AI 导购交易的资金流/数据流所触达的主体都能落入某一层（用 3 个真实交易案例反向验证：豆包买抖音商品、ChatGPT 内用 Sparky 买沃尔玛商品、Kroger App 内用 Cart Assistant 建购物车）。
+- **不漏**：任何一笔 AI 导购交易的资金流/数据流所触达的主体都能落入某一层（用 3 个真实交易案例反向验证：豆包买抖音电商商品、ChatGPT 内用零售商应用完成商家侧结账、Kroger App 内用 Cart Assistant 建购物车）。
 
 ```mermaid
 flowchart TB
     L1["L1 模型与算力层<br/>OpenAI/Google/Anthropic/DeepSeek<br/>字节火山·豆包大模型/阿里通义/腾讯混元"]
-    L2["L2 入口与流量层（需求侧）<br/>2a 通用AI助手：ChatGPT/Gemini/Perplexity/豆包/千问/元宝<br/>2b 站内AI导购：Rufus/Sparky/AI万能搜/京言/多多AI搜索<br/>2c 内容社区AI：小红书点点/抖音AI搜索<br/>2d 硬件入口：Alexa+/千问AI眼镜/豆包手机/JoyInside"]
-    L3["L3 商品供给与交易层<br/>3a 平台：淘天/京东/拼多多/抖音电商/Amazon/Walmart<br/>3b 品牌与商家：D2C/Shopify商家<br/>3c 即时零售：小象超市/叮咚/盒马/Instacart"]
+    L2["L2 入口与流量层（需求侧）<br/>2a 通用AI助手：ChatGPT/Gemini/Perplexity/豆包/千问/元宝<br/>2b 站内AI导购：Rufus/淘宝AI导购/Cart Assistant/多多AI搜索<br/>2c 内容社区AI：小红书点点/抖音AI搜索<br/>2d 硬件入口：Alexa+/千问AI眼镜/豆包手机"]
+    L3["L3 商品供给与交易层<br/>3a 平台：淘天/京东/拼多多/抖音电商/Amazon/Target<br/>3b 品牌与商家：D2C/Shopify商家<br/>3c 即时零售：小象超市/叮咚/盒马/Instacart"]
     L4["L4 交易基础设施层<br/>4a 商务协议与目录：ACP/UCP/Shopify Catalog/Merchant Center<br/>4b 支付与信任：Stripe SPT/Visa VIC/Mastercard Agent Pay/AP2/支付宝/微信支付"]
     L5["L5 商家服务与营销层（供给侧使能）<br/>5a GEO/AEO：Profound/清蓝/Semrush/Ahrefs<br/>5b SaaS与Agent平台：Agentforce/Shopify Sidekick/有赞/微盟<br/>5c 内容生成与数字人：京东言犀/硅基智能<br/>5d 监测分析：Adobe/QuestMobile/Similarweb"]
     L6["L6 履约与供应链AI层<br/>物流超脑/叮咚算法体系/美团CatPaw/Instacart Store View+Caper"]
@@ -66,11 +66,11 @@ flowchart TB
 | 字段 | 内容 |
 |---|---|
 | 职能 | 在交易场内降低决策成本、提升转化与客单，防御决策入口外流 |
-| 海外代表 | Amazon Rufus（3 亿用户/年，+60% 购买完成率，约 120 亿美元增量）、Walmart Sparky、Instacart Cart Assistant（白标） |
-| 国内代表 | 淘宝 AI 万能搜 + 千问 AI 购物助手、京东京言（8000 万/季）、拼多多 AI 搜索、快手 AI 购物助手 |
+| 海外代表 | Amazon Rufus（3 亿累计使用用户/年，使用者购买完成率高约 60%，近 120 亿美元增量年化销售，均为公司口径且含自选择偏差）、Instacart Cart Assistant（白标）、Target 等零售商 AI 应用 |
+| 国内代表 | 淘宝 AI 万能搜 + 千问 AI 购物助手、拼多多 AI 搜索、快手 AI 购物助手 |
 | 收入模式 | 不直接收费；价值=转化率提升 × GMV 增量 + 时长留存 + 会员粘性 + 意图数据资产（反哺推荐与广告） |
 | 成本结构 | 推理成本（Rufus 级别的量级下是数亿美元/年量级的算力投入，需测算）+ 研发 + 幻觉治理与人工兜底 |
-| 关键数据 | Rufus/京言见上；淘宝搜索基线转化率 8.2% vs 行业 4.5%；官方称 AI 万能搜「暂无商业化」——商业化启动时点是关键观察信号 |
+| 关键数据 | Rufus 见上；淘宝 AI 导购内部口径实测 DAU 500 万、人均 IPV 0.11 次、人均对话轮次 1.3 轮（P3，见报告 §1.5）——瓶颈在决策深度而非流量；官方称 AI 万能搜「暂无商业化」，商业化启动时点是关键观察信号 |
 | 议价力/风险 | 对内是防御性必选项；风险：AI 结果挤压广告位（左右互搏——AI 答案页如何承载竞价广告是全行业未解题） |
 
 **2c 内容与社区 AI**：小红书点点（生活决策 AI，UGC 语料壁垒）、抖音 AI 搜索。收入=广告与种草-交易闭环强化；风险=语料被站外大模型「白嫖」（种草在小红书、成交在别处）。
@@ -82,11 +82,11 @@ flowchart TB
 | 字段 | 内容 |
 |---|---|
 | 职能 | 商品池、定价、交易系统、履约与售后；决定是否/如何向 AI 入口开放 |
-| 海外代表 | Amazon、Walmart（Sparky 反向输出）、Target/百思买/家得宝等（接入 ACP 零售商 App）、Shopify 百万商家、Etsy |
-| 国内代表 | 淘天（40 亿商品库开放给千问）、京东（自建 AI 全家桶 + 借力元宝）、抖音电商（豆包归因结算）、拼多多、品牌商家 |
-| 关键动作 | 三种姿态：①深度绑定一个入口（抖音×豆包）②自建+多入口（沃尔玛 Sparky 进 ChatGPT/Gemini）③观望/防御（多数品牌） |
+| 海外代表 | Amazon、Target/百思买/家得宝等（接入 ACP 零售商 App）、Shopify 百万商家（Agentic Storefronts）、Etsy |
+| 国内代表 | 淘天（40 亿商品库开放给千问）、京东（自建 AI + 借力元宝）、抖音电商（豆包归因结算）、拼多多、品牌商家 |
+| 关键动作 | 三种姿态：①深度绑定一个入口（抖音×豆包）②自建站内导购 + 以商家应用形式多入口接入（Amazon、Target 等）③观望/防御（多数品牌） |
 | 收入/成本 | 收入=AI 渠道增量 GMV（AI 流量 RPV +37%）；成本=佣金/技术服务费（ChatGPT 约 4%+通道费；对比 Amazon 市场佣金约 15%，AI 渠道费率目前更低——费率演化是核心跟踪指标）、商品 feed 改造、GEO 预算（+210%）、让渡用户关系与数据的隐性成本 |
-| 议价力/风险 | Walmart 案例证明零售商可拿回主动权（拒绝平台代结账、输出自有 Agent）；风险=被 AI 入口「管道化」，品牌与用户关系被切断 |
+| 议价力/风险 | 多条证据表明零售商可拿回主动权：Instant Checkout 因商家不愿让渡 Merchant of Record 而下线、ACP/UCP 均把 Merchant of Record 留给商家、Amazon 诉 Perplexity 获初步禁令确立外部代理需经授权；风险=被 AI 入口「管道化」，品牌与用户关系被切断 |
 
 ### L4 交易基础设施层——「协议与支付的标准之争」
 
@@ -126,8 +126,8 @@ flowchart TB
 | 模式 | 定义 | 代表 | 优势 | 脆弱点 |
 |---|---|---|---|---|
 | 垂直自建闭环 | 模型、入口、交易同属一个生态 | 字节（豆包+抖音电商）、阿里（千问+淘宝）、Amazon（Rufus） | 数据与履约全链路、归因清晰、体验最顺 | 商品池封闭、比价不中立（豆包自认无法全网比价） |
-| 联盟/插件 | 入口与交易分属两家，协议连接 | 腾讯元宝×京东、Walmart Sparky×ChatGPT/Gemini、零售商×ACP | 各保核心资产（腾讯要场景、京东要流量；沃尔玛保结账与会员） | 责任边界与体验断层、佣金谈判张力 |
-| 中立第三方 | 不绑定交易方的独立导购 | Perplexity（联盟）、Google（UCP 0 费率，靠广告） | 全网比价的用户信任叙事 | 变现弱、供给数据质量依赖抓取；36 氪判断「中立导购 AI 并未出现」——是否为伪命题是本研究的核心辩题之一 |
+| 联盟与协议接入 | 入口与交易分属两家，协议连接 | 腾讯元宝×京东、零售商应用×ChatGPT（ACP）、商家×UCP、Shopify Agentic Storefronts | 各保核心资产（AI 方要场景与发现层，商家保结账、会员与售后） | 责任边界与体验断层、佣金谈判张力 |
+| 中立第三方 | 不绑定交易方的独立导购 | Perplexity（联盟分佣）、Google（UCP，商家保 Merchant of Record） | 全网比价的用户信任叙事 | 变现弱；供给数据依赖协议授权而非抓取——Amazon 诉 Perplexity 获初步禁令后，绕行式代理路径基本关闭 |
 
 ### 3.3 待验证假设（访谈与数据检验）
 

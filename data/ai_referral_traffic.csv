@@ -1,0 +1,13 @@
+panel,标签,同比增速_pct,性质
+period,2025假日季(11—12月),693,实际
+period,2025年12月(峰值),1151,实际
+period,2026Q1,393,实际
+period,2026年3月,269,实际
+industry,零售,393,实际
+industry,旅游,233,实际
+industry,金融服务,158,实际
+industry,媒体娱乐,84,实际
+industry,科技软件,63,实际
+scenario_param,保守,30,增速年衰减系数pct
+scenario_param,中性,40,增速年衰减系数pct
+scenario_param,乐观,55,增速年衰减系数pct
