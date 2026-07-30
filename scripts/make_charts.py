@@ -21,6 +21,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 import pandas as pd
+from decimal import ROUND_HALF_UP, Decimal
 from matplotlib.patches import Patch
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -42,6 +43,7 @@ C_AMBER = "#B45309"
 C_GRAY = "#4B5563"
 C_LIGHT = "#93C5FD"
 C_PALE = "#CBD5E1"
+INK_TEXT = "#1F2937"
 
 COMPILER = "编制：AI电商行业研究报告｜数据截至2026-07"
 INTERNAL_NOTE = (
@@ -56,6 +58,16 @@ BASE = {
 
 
 FOOTER_FS = 7.2
+
+
+def r0(x):
+    """四舍五入到整数（ROUND_HALF_UP）。Python 默认的 round-half-even 会让 64.5→64、747.5→748，
+    导致图表标签与正文取整结果不一致，故统一走此函数。"""
+    return int(Decimal(repr(float(x))).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+
+
+def r2(x):
+    return float(Decimal(repr(float(x))).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
 
 
 def _visual_len(text):
@@ -117,11 +129,16 @@ def compute_scenarios():
             rows.append([product, scen, "2026年中", dau, ipv, dau * ipv, "实际基期"])
             for period, year in [("2026→2027", "2027年中"), ("2027→2028", "2028年中")]:
                 a = asm[(asm.产品 == product) & (asm.情景 == scen) & (asm.期间 == period)].iloc[0]
-                dau *= a["DAU年增长倍数"]
-                ipv *= a["人均IPV年增长倍数"]
+                # 先收敛浮点误差再进入下一期，避免 650×1.15=747.4999… 被取整为747
+                dau = round(dau * a["DAU年增长倍数"], 6)
+                ipv = round(ipv * a["人均IPV年增长倍数"], 6)
                 rows.append([product, scen, year, dau, ipv, dau * ipv, "情景测算"])
     out = pd.DataFrame(rows, columns=["产品", "情景", "时点", "DAU_万人", "人均IPV", "日均有效商品浏览量_万次", "性质"])
-    out.round(3).to_csv(DATA / "_computed_scenarios.csv", index=False, encoding="utf-8")
+    # 展示列：图表标签与报告正文一律引用这三列，确保取整结果一致
+    out["DAU_展示"] = out["DAU_万人"].map(r0)
+    out["人均IPV_展示"] = out["人均IPV"].map(r2)
+    out["浏览量_展示"] = out["日均有效商品浏览量_万次"].map(r0)
+    out.round(4).to_csv(DATA / "_computed_scenarios.csv", index=False, encoding="utf-8")
     return out
 
 
@@ -155,12 +172,17 @@ def fig01_referral_traffic():
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11.6, 4.4), gridspec_kw={"width_ratios": [1, 1.15]})
 
-    b1 = ax1.bar(per["标签"], per["同比增速_pct"], color=[C_LIGHT, C_PALE, C_BLUE, C_LIGHT], width=0.62)
+    b1 = ax1.bar(per["标签"], per["同比增速_pct"], color=[C_PALE, C_PALE, C_BLUE, C_LIGHT], width=0.62)
     ax1.bar_label(b1, fmt="+%g%%", fontsize=9.5, padding=2)
-    ax1.set_title("① 已实现：AI引荐流量同比增速（实际值）", fontsize=10.5, loc="left")
+    ax1.legend(handles=[Patch(color=C_PALE, label="2025年窗口（假日季含12月）"),
+                        Patch(color=C_BLUE, label="2026Q1（外推基点）"),
+                        Patch(color=C_LIGHT, label="2026年3月（含于2026Q1）")],
+               fontsize=7.6, frameon=False, loc="upper right")
+    ax1.set_title("① 已实现：AI引荐流量同比增速（四个窗口互有嵌套，非独立时点序列）",
+                  fontsize=9.6, loc="left")
     ax1.set_ylabel("同比增速（%）", fontsize=9)
     ax1.tick_params(axis="x", labelsize=8.2, rotation=14)
-    ax1.set_ylim(0, 1350)
+    ax1.set_ylim(0, 1560)
     ax1.grid(axis="y", linestyle=":", alpha=0.5)
 
     styles = {"保守": (C_GRAY, ":"), "中性": (C_BLUE, "-"), "乐观": (C_AMBER, "--")}
@@ -191,6 +213,8 @@ def fig01_referral_traffic():
            "测算假设：2027Q1与2028Q1同比增速＝上一年同比增速×年保留系数（保守30%／中性40%／乐观55%）。系数为设定值而非推导值：已观测的两个收敛比分别为"
            "269%÷1151%＝0.23（3个月）与269%÷393%＝0.68，二者差异主要来自2025年12月为假日季峰值，含季节性成分，直接年化（0.23⁴≈0.003）会得到近乎归零的结果，"
            "与渠道仍在扩张的事实矛盾。故本报告不由单期观测外推，改为给出一个覆盖面较宽的系数区间，读者可自行替换参数复算。\n"
+           "读图提示：左面板的四个窗口互有嵌套——「2025假日季」包含「2025年12月」，「2026Q1」包含「2026年3月」，"
+           "因此不构成一条独立的时点序列，不可按柱高顺序读作单调下降的趋势线；右面板才是按季度对齐的可比序列。\n"
            "该外推为本报告测算，非Adobe预测。\n" + COMPILER)
     fig.savefig(OUT / "fig01_ai_referral_traffic_trend.png")
     plt.close(fig)
@@ -285,8 +309,14 @@ def fig04_forecasts():
     df["mid"] = (df["低值_十亿美元"] + df["高值_十亿美元"]) / 2
     df = df.sort_values("mid")
     labels = [f"{r.机构}｜{r.范围} {r.目标年份}" for r in df.itertuples()]
-    fig, ax = plt.subplots(figsize=(9.6, 4.9))
-    colors = [C_BLUE if r.范围 == "美国" else C_AMBER for r in df.itertuples()]
+    fig, ax = plt.subplots(figsize=(10.0, 4.9))
+    width_of = {"仅AI平台内完成结账的交易": ("窄", C_BLUE),
+                "代理自主执行的购买": ("中", C_GREEN),
+                "代理发起/影响/完成的购买": ("宽", C_AMBER),
+                "代理编排的零售收入(含AI影响决策)": ("宽", C_AMBER),
+                "代理编排的零售收入(全球)": ("宽", C_AMBER),
+                "零售交易流(窄/宽口径)": ("混合", C_GRAY)}
+    colors = [width_of[r.口径][1] for r in df.itertuples()]
     for i, r in enumerate(df.itertuples()):
         lo, hi = r.低值_十亿美元, r.高值_十亿美元
         if lo == hi:
@@ -304,16 +334,21 @@ def fig04_forecasts():
     ax.set_xlim(10, 20000)
     ax.xaxis.set_major_formatter(mticker.FuncFormatter(lambda val, _: f"{val:,.0f}"))
     ax.set_xlabel("预测规模（十亿美元，对数轴）", fontsize=9)
-    ax.set_title("图4  代理式商务规模预测对比：口径差异决定结论差异", fontsize=12, loc="left", fontweight="bold")
-    ax.legend(handles=[Patch(color=C_BLUE, label="美国口径"), Patch(color=C_AMBER, label="全球口径")],
-              loc="lower right", fontsize=9, frameon=False)
+    ax.set_title("图4  代理式商务规模预测：口径宽窄（颜色）造成的差距大于机构之间的差距",
+                 fontsize=11.5, loc="left", fontweight="bold")
+    ax.legend(handles=[Patch(color=C_BLUE, label="窄口径：仅AI平台内结账"),
+                       Patch(color=C_GREEN, label="中口径：代理自主执行的购买"),
+                       Patch(color=C_AMBER, label="宽口径：代理编排／影响的零售收入"),
+                       Patch(color=C_GRAY, label="混合口径")],
+              loc="lower right", fontsize=8.5, frameon=False)
     ax.grid(axis="x", linestyle=":", alpha=0.5)
     footer(fig,
-           "数据来源：eMarketer、Morgan Stanley、Bain、McKinsey、Edgar Dunn 公开预测（2025年10月—12月发布）。\n"
+           "数据来源：eMarketer、Morgan Stanley、Bain、McKinsey、Edgar Dunn 公开预测（2025年10月—12月发布）；全部为机构预测值，非实测数据。\n"
            "口径说明：eMarketer仅统计在AI平台内完成结账的交易（窄口径）；Morgan Stanley为代理自主执行的购买；Bain含代理发起／影响／完成的购买；"
            "McKinsey为代理编排的零售收入（含AI影响决策，宽口径）；Edgar Dunn为零售交易流。\n"
-           "读图提示：横轴为对数轴。菱形标记为机构给出的点估计，线段为机构给出的区间，两者不可混读。"
-           "窄口径与宽口径相差约一个数量级以上，且目标年份与地域不同，各条不可直接相加或取均值。\n" + COMPILER)
+           "读图提示：横轴为对数轴。**颜色编码口径宽窄**（地域与年份已写在纵轴标签内）；菱形标记为机构点估计，线段为机构给出的区间，两者不可混读。"
+           "窄口径（蓝）与宽口径（橙）相差约一个数量级以上，差距大于同口径内不同机构之间的差距——这是本图要说明的主要事实。"
+           "各条目标年份与地域不同，不可直接相加或取均值。\n" + COMPILER)
     fig.savefig(OUT / "fig04_agentic_market_forecasts.png")
     plt.close(fig)
 
@@ -381,32 +416,49 @@ def fig07_engagement():
     eng = load_engagement()
     products = ["淘宝AI导购", "千问电商场景"]
     colors = [C_RED, C_BLUE]
-    derived_ipv_per_turn = [eng.loc[p, "人均IPV"] / eng.loc[p, "人均对话轮次"] for p in products]
-    derived_views = [eng.loc[p, "DAU"] * eng.loc[p, "人均IPV"] for p in products]
+    per_turn = [eng.loc[p_, "人均IPV"] / eng.loc[p_, "人均对话轮次"] for p_ in products]
+    views = [eng.loc[p_, "DAU"] * eng.loc[p_, "人均IPV"] for p_ in products]
 
     panels = [
-        ("使用规模：DAU", [eng.loc[p, "DAU"] for p in products], "万人", "{:.0f}"),
-        ("决策深度：人均IPV", [eng.loc[p, "人均IPV"] for p in products], "次/人·日", "{:.2f}"),
-        ("会话深度：人均对话轮次", [eng.loc[p, "人均对话轮次"] for p in products], "轮/会话", "{:.1f}"),
-        ("次日留存率", [eng.loc[p, "次日留存率"] for p in products], "%", "{:.0f}%"),
-        ("7日回访率", [eng.loc[p, "7日回访率"] for p in products], "%", "{:.0f}%"),
-        ("派生：日均有效商品浏览量", derived_views, "万次/日", "{:.0f}"),
+        ("使用规模：DAU", [eng.loc[p_, "DAU"] for p_ in products], "万人", "{:.0f}", False),
+        ("决策深度：人均IPV", [eng.loc[p_, "人均IPV"] for p_ in products], "次/人·日", "{:.2f}", False),
+        ("会话深度：人均对话轮次", [eng.loc[p_, "人均对话轮次"] for p_ in products], "轮/会话", "{:.1f}", False),
+        ("派生：每轮对话产出的商品浏览", per_turn, "次/轮", "{:.3f}", True),
+        ("次日留存率", [eng.loc[p_, "次日留存率"] for p_ in products], "%", "{:.0f}%", False),
+        ("7日回访率", [eng.loc[p_, "7日回访率"] for p_ in products], "%", "{:.0f}%", False),
+        ("派生：日均有效商品浏览量", views, "万次/日", "{:.0f}", True),
     ]
 
-    fig, axes = plt.subplots(2, 3, figsize=(11.8, 6.1))
-    for ax, (title, vals, unit, fmt) in zip(axes.flat, panels):
-        bars = ax.bar(["淘宝\nAI导购", "千问\n电商场景"], vals, color=colors, width=0.5, alpha=0.92)
-        ax.bar_label(bars, labels=[fmt.format(v) for v in vals], fontsize=10.5, padding=3, fontweight="bold")
-        ax.set_title(title, fontsize=10, loc="left")
+    fig, axes = plt.subplots(2, 4, figsize=(13.2, 6.2))
+    flat = axes.flat
+    for ax, (title, vals, unit, fmt, derived) in zip(flat, panels):
+        bars = ax.bar(["淘宝\nAI导购", "千问\n电商场景"], vals, color=colors, width=0.5,
+                      alpha=0.92, hatch="//" if derived else None, edgecolor="white" if derived else None)
+        ax.bar_label(bars, labels=[fmt.format(v) for v in vals], fontsize=10, padding=3, fontweight="bold")
+        ax.set_title(title, fontsize=9.6, loc="left", color=C_GRAY if derived else "black")
         ax.set_ylabel(unit, fontsize=8.5)
         ax.set_ylim(0, max(vals) * 1.55)
-        ax.tick_params(axis="x", labelsize=9)
+        ax.tick_params(axis="x", labelsize=8.8)
         ax.grid(axis="y", linestyle=":", alpha=0.45)
         ratio = vals[1] / vals[0] if vals[0] else 0
-        ax.text(0.97, 0.94, f"千问÷淘宝 = {ratio:.2f}×", transform=ax.transAxes,
-                fontsize=8.8, color=C_GRAY, ha="right", va="top")
+        ax.text(0.97, 0.94, f"千问÷淘宝 ≈ {ratio:.2f}×", transform=ax.transAxes,
+                fontsize=8.4, color=C_GRAY, ha="right", va="top")
+    last = list(axes.flat)[-1]
+    last.axis("off")
+    last.text(0.0, 0.92,
+              "本图的判读顺序\n\n"
+              "① DAU 与人均IPV 的两组倍数方向相反、量级相近，\n"
+              "   几近相互抵消，乘积为 0.78×——因此\n"
+              "   「DAU领先11.63倍、浏览量只领先1.28倍」与\n"
+              "   「人均IPV约差9倍」是同一事实的两种表述。\n\n"
+              "② 真正提供额外信息的是「每轮对话产出」：\n"
+              "   差距落在交互层（0.085 对 0.357 次／轮），\n"
+              "   而非用户层。斜纹柱为本报告派生指标。\n\n"
+              "③ 留存两项仅约1.1～1.2×，说明差距不在\n"
+              "   「是否愿意再来」，而在「来了是否进入选品」。",
+              fontsize=8.2, color=INK_TEXT, va="top", linespacing=1.5)
 
-    fig.suptitle("图7  站内AI导购运营指标对照：规模大不等于价值大（内部口径）",
+    fig.suptitle("图7  规模大不等于价值大：DAU领先11.63倍，有效商品浏览量只领先1.28倍（内部口径 P3）",
                  fontsize=12, x=0.01, ha="left", fontweight="bold")
     fig.tight_layout(rect=[0, 0.03, 1, 0.93])
     footer(fig,
@@ -414,13 +466,12 @@ def fig07_engagement():
            "口径说明：DAU=使用该AI导购功能／触发电商场景的去重日活跃用户；人均IPV=每使用用户日均产生的商品详情页浏览次数；"
            "人均对话轮次=单次会话内平均对话轮数；次日留存率=D+1回访占比。\n"
            "「7日回访率」口径校正：原始表述为「7日留存30%／33%」，但单日留存随时间单调不增、不可能高于次日留存，"
-           f"故判定其口径为7日窗口内至少回访一次，报告按此解读，且不与次日留存做同类比较。\n"
-           f"派生指标算法：日均有效商品浏览量＝DAU×人均IPV（淘宝 500万×0.11＝{derived_views[0]:.0f}万次／日；"
-           f"千问 43万×1.00＝{derived_views[1]:.0f}万次／日）；每轮对话产出＝人均IPV÷人均对话轮次"
-           f"（淘宝{derived_ipv_per_turn[0]:.3f}／千问{derived_ipv_per_turn[1]:.3f}次，假设二者同为人均口径，属近似量级）。"
-           "注：DAU与人均IPV的比值互为倒数关系，两组倍数（0.09×与9.09×）是同一事实的两种表述，其乘积即0.78×。\n"
+           "故判定其口径为7日窗口内至少回访一次，报告按此解读，且不与次日留存做同类比较。\n"
+           f"派生指标算法（斜纹柱）：日均有效商品浏览量＝DAU×人均IPV（淘宝 500万×0.11＝{views[0]:.0f}万次／日；"
+           f"千问 43万×1.00＝{views[1]:.0f}万次／日）；每轮对话产出＝人均IPV÷人均对话轮次"
+           f"（淘宝{per_turn[0]:.3f}／千问{per_turn[1]:.3f}次）。后者假设两项同为人均口径，属近似量级。\n"
            "精度提示：千问人均IPV为整数1.00（淘宝侧为两位有效数字0.11），无法判断是舍入值还是定义性产物（如「每会话至少浏览1件」），"
-           "引用倍数关系时应视为约9倍量级而非精确9.09倍。\n"
+           "故全文的深度倍数一律表述为「约9倍量级」，本图标注亦加约等号。\n"
            "可比性提示：①两侧入口曝光机制不同（淘宝为高流量电商App内的入口曝光，千问为用户主动触发的通用助手场景），"
            "DAU统计的意图强度不一致；②淘宝站内用户可绕过AI链路直达商品，归因规则可能低估其IPV——即便按低估2～3倍折算，"
            "深度差距仍为约3～4.5倍，方向性结论不变；③IPV为日度口径、轮次为会话内均值，相除结果为近似量级。\n" + COMPILER)
@@ -433,87 +484,94 @@ def fig08_scenario():
     sc = compute_scenarios()
     points = ["2026年中", "2027年中", "2028年中"]
     scen_style = {"保守": C_PALE, "中性": C_BLUE, "乐观": C_AMBER}
+    ymax = sc["日均有效商品浏览量_万次"].max() * 1.42
 
-    fig, axes = plt.subplots(1, 2, figsize=(11.8, 4.9))
+    fig, axes = plt.subplots(1, 2, figsize=(12.0, 5.0), sharey=True)
     for ax, product in zip(axes, ["淘宝AI导购", "千问电商场景"]):
         sub = sc[sc.产品 == product]
         base = sub[sub.时点 == "2026年中"].iloc[0]
         w = 0.24
         ax.bar([0], [base["日均有效商品浏览量_万次"]], width=0.34, color=C_GRAY, label="实际基期")
-        ax.annotate(f"{base['日均有效商品浏览量_万次']:.0f}\nDAU {base['DAU_万人']:.0f}万\nIPV {base['人均IPV']:.2f}",
+        ax.annotate(f"{base['浏览量_展示']:.0f}\nDAU {base['DAU_展示']:.0f}万\nIPV {base['人均IPV_展示']:.2f}",
                     (0, base["日均有效商品浏览量_万次"]), textcoords="offset points", xytext=(0, 4),
-                    ha="center", fontsize=7.6, color=C_GRAY)
+                    ha="center", fontsize=7.8, color=C_GRAY)
         for si, (scen, color) in enumerate(scen_style.items()):
             rows = [sub[(sub.情景 == scen) & (sub.时点 == t)].iloc[0] for t in points[1:]]
             xs = [1 + (si - 1) * w, 2 + (si - 1) * w]
             ax.bar(xs, [r["日均有效商品浏览量_万次"] for r in rows], width=w, color=color, label=scen)
             for x_, r in zip(xs, rows):
-                ax.annotate(f"{r['日均有效商品浏览量_万次']:.0f}\n{r['DAU_万人']:.0f}万\n{r['人均IPV']:.2f}",
+                ax.annotate(f"{r['浏览量_展示']:.0f}\n{r['DAU_展示']:.0f}万\n{r['人均IPV_展示']:.2f}",
                             (x_, r["日均有效商品浏览量_万次"]), textcoords="offset points", xytext=(0, 3),
-                            ha="center", fontsize=7.0, color="#374151")
+                            ha="center", fontsize=7.2, color="#374151")
         ax.set_xticks([0, 1, 2])
         ax.set_xticklabels(points, fontsize=9.5)
-        ax.set_ylabel("日均有效商品浏览量（万次／日）", fontsize=8.5)
         ax.set_title(product, fontsize=11, loc="left", fontweight="bold")
         ax.grid(axis="y", linestyle=":", alpha=0.45)
         ax.legend(fontsize=8.5, frameon=False, ncol=2, loc="upper left")
-        ax.set_ylim(0, max(sub["日均有效商品浏览量_万次"]) * 1.46)
+        ax.set_ylim(0, ymax)
+    axes[0].set_ylabel("日均有效商品浏览量（万次／日）", fontsize=9)
 
-    fig.suptitle("图8  站内AI导购有效商品浏览量情景测算（非预测；柱上三行依次为浏览量、DAU、人均IPV）",
+    fig.suptitle("图8  情景测算：两侧的驱动结构不同——淘宝靠深度与规模双轮，千问几乎全靠规模（非预测）",
                  fontsize=11.5, x=0.01, ha="left", fontweight="bold")
     fig.tight_layout(rect=[0, 0.05, 1, 0.92])
     footer(fig,
            "数据来源：2026年中基期为业务方提供的内部运营口径数据（见图7）；2027—2028年为本报告按公开锚点设定假设后的测算，非任何机构预测。\n"
-           "测算方法：日均有效商品浏览量＝DAU×人均IPV，两项分别按情景假设的年增长倍数逐期复利推演（假设明细见 data/instore_scenario_assumptions.csv，"
-           "中间结果见 data/_computed_scenarios.csv）。柱上已同时标出DAU与人均IPV两条分项路径，便于核对乘积来源。\n"
+           "读图提示：两面板**共用同一纵轴**，可直接比较——2026年中两侧基期接近（55对43万次／日），到2028年中乐观档才拉开约2.8倍。"
+           "柱上三行依次为有效商品浏览量、DAU、人均IPV，便于核对乘积来源；图表与报告正文共用同一取整规则（ROUND_HALF_UP）。\n"
+           "测算方法：日均有效商品浏览量＝DAU×人均IPV，两项分别按情景假设的年增长倍数逐期复利推演"
+           "（假设明细见 data/instore_scenario_assumptions.csv，含展示取整列的中间结果见 data/_computed_scenarios.csv）。\n"
            "关键假设与锚点：①增速收敛参照Adobe口径AI引荐流量的已观测放缓趋势（系数为设定值，推导限制见图1图注）；"
-           "②高增长档参照亚马逊披露的Rufus月活同比+149%、交互量同比+210%（该两项为用户数与交互次数口径，此处仅借其量级设定用户数增速，属跨口径借用）；"
-           "③深度上限分两侧设定——淘宝侧以千问当前实测1.00次／人·日为追赶上限，乐观档2028年中仅达0.594次；"
-           "千问侧因已处同类已实证最高水平、头寸有限，两年累计深度提升上限设为20%（乐观档2028年中约1.20次）。\n"
+           "②高增长档参照亚马逊披露的Rufus月活同比+149%、交互量同比+210%（公司口径）——需说明两点弱点：该两项分别为用户数与交互次数口径，"
+           "此处仅借其量级设定用户数增速，属跨口径借用；且淘宝侧乐观档实取×2.00、千问侧实取×3.00，两侧取值不同是因两侧基数与渗透空间不同，属编制方判断；"
+           "③深度上限分两侧设定——淘宝侧以千问当前实测1.00次／人·日为追赶上限，乐观档2028年中仅达0.59次；千问侧因已处同类已实证最高水平，"
+           "设定两年累计深度提升不超过20%（乐观档约1.20次）。两侧上限性质不同，不可混用。\n"
            "使用限制：本测算仅推演流量与浏览深度，未推演成交额；由浏览量到GMV需引入详情页转化率与客单价两项敞口参数，"
-           "本报告不做单点估计，避免用假设堆叠出规模结论。\n" + COMPILER)
+           "本报告不做单点估计，避免用假设堆叠出规模结论。另需注意：本图的区间宽度（淘宝侧约5.9倍）全部来自DAU与人均IPV两个流量层假设，"
+           "并不包含转化率与客单价的敞口，因此它衡量的是**流量层自身**的不确定性。\n" + COMPILER)
     fig.savefig(OUT / "fig08_instore_scenario_projection.png")
     plt.close(fig)
 
 
 # ---------------------------------------------------------------- 图9
 def fig09_scorecard():
-    """按「指标构造」而非「证据线」分面板，确保同一坐标轴内量纲一致；证据线以颜色区分。"""
+    """按「对照构造」分面板：同一面板内的对照组构造与量纲一致，避免跨构造的无效排名。"""
     df = pd.read_csv(DATA / "effect_scorecard.csv")
-    effect = df[df["指标构造"] == "效果类"].sort_values("数值_pct")
-    growth = df[df["指标构造"] == "规模增长类"].sort_values("数值_pct")
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11.8, 4.4), gridspec_kw={"width_ratios": [1.55, 1]})
-
-    def draw(ax, sub, xmax):
+    groups = [
+        ("① 使用者 对 未使用者\n（站内自有导购）", "使用者对未使用者", 90, "相对未使用者的提升（%）"),
+        ("② AI渠道 对 非AI渠道\n（站外AI引荐）", "AI渠道对非AI渠道", 90, "相对非AI渠道的优势（%）"),
+        ("③ 同比增速\n（规模增长，两条证据线并列）", "同比增速", 470, "同比增速（%）"),
+    ]
+    fig, axes = plt.subplots(1, 3, figsize=(13.0, 4.3), gridspec_kw={"width_ratios": [0.72, 1.15, 1.25]})
+    for ax, (title, key, xmax, xlabel) in zip(axes, groups):
+        sub = df[df["对照构造"] == key].sort_values("数值_pct")
         colors = [C_GREEN if line == "站内自有导购" else C_BLUE for line in sub["证据线"]]
-        bars = ax.barh(sub["指标"], sub["数值_pct"], color=colors, height=0.55)
+        bars = ax.barh(sub["指标"], sub["数值_pct"], color=colors, height=0.5)
         for bar, r in zip(bars, sub.itertuples()):
             ax.text(bar.get_width() + xmax * 0.02, bar.get_y() + bar.get_height() / 2,
                     f"+{r.数值_pct:g}%", va="center", fontsize=9)
         ax.set_xlim(0, xmax)
+        ax.set_title(title, fontsize=9.6, loc="left")
+        ax.set_xlabel(xlabel, fontsize=8.6)
         ax.grid(axis="x", linestyle=":", alpha=0.5)
-        ax.tick_params(axis="y", labelsize=8.5)
-
-    draw(ax1, effect, 80)
-    ax1.set_title("① 效果类指标：相对对照组的转化提升幅度", fontsize=10.5, loc="left")
-    ax1.set_xlabel("相对对照组的提升幅度（%）", fontsize=9)
-    draw(ax2, growth, 260)
-    ax2.set_title("② 规模增长类指标：同比增速", fontsize=10.5, loc="left")
-    ax2.set_xlabel("同比增速（%）", fontsize=9)
-    ax1.legend(handles=[Patch(color=C_GREEN, label="站内自有导购"), Patch(color=C_BLUE, label="站外AI引荐")],
-               fontsize=8.5, frameon=False, loc="lower right")
-    fig.suptitle("图9  站内AI导购与站外AI引荐：按指标构造分列的效果对照", fontsize=12, x=0.01, ha="left", fontweight="bold")
-    fig.tight_layout(rect=[0, 0.06, 1, 0.90])
+        ax.tick_params(axis="y", labelsize=8.2)
+    fig.suptitle("图9  站内AI导购的公开效果证据只有一个数据点（面板①）",
+                 fontsize=12, x=0.01, ha="left", fontweight="bold")
+    fig.legend(handles=[Patch(color=C_GREEN, label="站内自有导购"), Patch(color=C_BLUE, label="站外AI引荐")],
+               fontsize=8.5, frameon=False, ncol=2, loc="upper right", bbox_to_anchor=(0.995, 0.995))
+    fig.tight_layout(rect=[0, 0.06, 1, 0.895])
     footer(fig,
-           "数据来源：亚马逊2025Q4财报电话会（Rufus三项，公司口径）；Adobe Digital Insights（2026年3月）；Shopify公开披露（2026年5月）。\n"
-           "分面板规则：面板①内全部为「相对对照组的转化类提升幅度」，面板②内全部为「同比增速」——两类构造量纲不同，故不置于同一坐标轴。"
-           "颜色区分证据线：站内自有导购与站外AI引荐的对照组构造不同（前者为使用者对未使用者，后者为AI渠道对非AI渠道），不可合并为单一区间。\n"
-           "因果性提示：三项效果类数值均为观察性对比。「Rufus使用者购买完成率+60%」中主动使用AI工具的用户本身购买意向更强，存在自选择偏差；"
-           "Adobe与Shopify的渠道对比未控制访客构成差异。在缺少随机对照实验的情况下，均应视为相关性上限而非因果效应。\n"
+           "数据来源：亚马逊2025Q4财报电话会（Rufus三项，公司口径）；Adobe Digital Insights（2026年3月转化与RPV、2026Q1流量增速）；Shopify公开披露（2026年5月）。\n"
+           "分面板规则：**按对照组构造分面板**，同一面板内的对照组与量纲一致，避免跨构造的无效排名。面板①为「使用者对未使用者」（个体层对比），"
+           "面板②为「AI渠道对非AI渠道」（渠道层对比），面板③为同比增速。颜色区分证据线（站内自有导购／站外AI引荐）。三个面板之间不可合并为单一区间。\n"
+           "面板②内含两类指标：转化率优势（Adobe +42%、Shopify +54%）与单次访问收入优势（Adobe RPV +37%），二者对照组构造相同但被测量的量不同，已在标签中写明。\n"
+           "本图的主要事实：面板①只有一根柱——站内AI导购在全球范围内仅有Amazon Rufus一个公开的效果数据点，且为观察性对比。"
+           "这既说明该方向的公开证据基础很薄，也说明自建实验能力是获得可决策数字的唯一途径。\n"
+           "因果性提示：面板①与②的全部数值均为观察性对比。「Rufus使用者购买完成率+60%」中主动使用AI工具的用户购买意向本就更强，存在自选择偏差；"
+           "Adobe与Shopify的渠道对比未控制访客构成差异，且同期AI渠道流量增长约4.9倍，访客构成必然发生迁移。均应视为相关性上限而非因果效应。\n"
            "同构造差异说明：Adobe（+42%）与Shopify（+54%）测量同一构造但相差12个百分点，来自面板差异——Adobe覆盖美国大型零售网站，"
            "Shopify以中小与DTC商家为主，且Shopify未披露完整方法。两者应作为区间理解（约+42%～+54%），不取单点。\n"
-           "未纳入说明：Salesforce「部署自有品牌Agent的零售商增速6.2%对未部署3.9%」为企业分组对比且「自有品牌Agent」口径宽于站内AI导购，"
-           "故不纳入本图，仅在报告§1.1的假日季数据表与图3中列示。\n" + COMPILER)
+           "未纳入说明：Salesforce「部署自有品牌Agent的零售商增速6.2%对未部署3.9%」为企业层分组对比（第三种对照构造），"
+           "且「自有品牌Agent」口径宽于站内AI导购，故不纳入本图，仅在报告§1.2的假日季数据表与图3中列示。\n" + COMPILER)
     fig.savefig(OUT / "fig09_effect_scorecard.png")
     plt.close(fig)
 
@@ -534,7 +592,7 @@ if __name__ == "__main__":
     for path in sorted(OUT.glob("*.png")):
         print(" -", path.relative_to(ROOT))
     print("\n情景测算结果：")
-    print(pd.read_csv(DATA / "_computed_scenarios.csv").to_string(index=False))
+    print(pd.read_csv(DATA / "_computed_scenarios.csv")[["产品","情景","时点","DAU_展示","人均IPV_展示","浏览量_展示"]].to_string(index=False))
     print("\nAI引荐流量累计指数：")
     for name, s in compute_traffic_index().items():
         idx = ", ".join(f"{v:,.0f}" for v in s["index"])
