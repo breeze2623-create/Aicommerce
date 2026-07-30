@@ -249,7 +249,8 @@ def fig02_traffic_quality():
     ax2.set_ylabel("相对非AI来源（%）", fontsize=9)
     ax2.set_ylim(0, 60)
     ax2.grid(axis="y", linestyle=":", alpha=0.5)
-    fig.suptitle("图2  AI引荐流量质量：转化率与单次访问收入", fontsize=12, x=0.01, ha="left", fontweight="bold")
+    fig.suptitle("图2  AI引荐流量的质量指标一年内反转：转化率由−38%转为+42%（渠道观察性对比）",
+                 fontsize=11.5, x=0.01, ha="left", fontweight="bold")
     fig.tight_layout(rect=[0, 0.04, 1, 0.92])
     footer(fig,
            "数据来源：Adobe Digital Insights（2026年4月发布），基于Adobe Analytics覆盖的美国零售网站访问数据。\n"
@@ -291,7 +292,8 @@ def fig03_holiday():
     ax2.set_ylim(0, 8)
     ax2.set_title("自有品牌Agent与销售增速", fontsize=10.5, loc="left")
     ax2.grid(axis="y", linestyle=":", alpha=0.5)
-    fig.suptitle("图3  2025假日季AI对零售销售的影响", fontsize=12, x=0.01, ha="left", fontweight="bold")
+    fig.suptitle("图3  假日季AI影响的销售约2620亿美元，但这是「影响」宽口径而非AI界面内成交",
+                 fontsize=11.5, x=0.01, ha="left", fontweight="bold")
     fig.tight_layout(rect=[0, 0.04, 1, 0.91])
     footer(fig,
            "数据来源：Salesforce《2025假日购物报告》及Cyber Week报告，基于超过15亿消费者的购物数据。\n"
@@ -362,7 +364,8 @@ def fig05_china_private():
     ax.bar_label(bars, fmt="%.2f", fontsize=9.5, label_type="center", color="white", fontweight="bold")
     ax.set_ylabel("市场规模（万亿元）", fontsize=9)
     ax.set_ylim(0, 4.0)
-    ax.set_title("图5  中国AI私域电商市场规模与渗透率（2025—2030）", fontsize=12, loc="left", fontweight="bold")
+    ax.set_title("图5  中国AI私域电商：渗透率预测升至约3.8倍，而隐含的私域底盘五年只增约36%",
+                 fontsize=11.2, loc="left", fontweight="bold")
     ax2 = ax.twinx()
     ax2.plot(df["年份"].astype(str), df["渗透率_pct"], color=C_BLUE, marker="o", linewidth=2)
     for x_, y_ in zip(df["年份"].astype(str), df["渗透率_pct"]):
@@ -377,8 +380,14 @@ def fig05_china_private():
               loc="upper left", fontsize=8.5, frameon=False)
     footer(fig,
            "数据来源：网经社电子商务研究中心《2025年度中国私域电商市场数据报告》（2026年5月发布，电数宝数据库）。\n"
+           "首要口径保留：该机构未公开「AI驱动」的操作化定义（何种参与程度计入），属宽口径，与本报告批评的「AI影响」类口径同类问题。"
+           "因此本图只能用于观察趋势方向，不宜作为规模基数或折算依据。\n"
            "口径说明：统计对象为「AI私域电商」，即私域电商中由AI驱动的部分，非全量中国AI电商GMV；"
-           "渗透率=AI私域电商规模÷私域电商总规模。深红柱为2025年实际值，浅红柱为该机构2026—2030年预测值（非本报告测算）。\n"
+           "渗透率＝AI私域电商规模÷私域电商总规模。深红柱为2025年实际值，浅红柱为该机构2026—2030年预测值（非本报告测算）。"
+           "原始来源以两位小数给出16.79%（2025实测）与64.07%（2030预测），属虚假精度，本图与报告一律按一位小数呈现。\n"
+           "自洽性反算（本报告计算）：以规模÷渗透率反推隐含的私域电商总盘＝2025年0.65÷16.8%≈3.87万亿元、2030年3.37÷64.1%≈5.26万亿元，"
+           "五年复合增速约6.3%（底盘五年只增约36%）；而渗透率升至约3.8倍。且3.87万亿元仅为同机构口径中国电商总规模59.2万亿元的约6.5%。"
+           "该组合在逻辑上并非不可能（AI替代私域内的非AI部分），但读者应据此自行判断其可信度。\n"
            "读图提示：该口径不可与图4的代理式商务预测直接比较，二者统计对象与地域均不同。\n" + COMPILER)
     fig.savefig(OUT / "fig05_china_ai_private_ecommerce.png")
     plt.close(fig)
@@ -441,7 +450,9 @@ def fig07_engagement():
         ax.tick_params(axis="x", labelsize=8.8)
         ax.grid(axis="y", linestyle=":", alpha=0.45)
         ratio = vals[1] / vals[0] if vals[0] else 0
-        ax.text(0.97, 0.94, f"千问÷淘宝 ≈ {ratio:.2f}×", transform=ax.transAxes,
+        # 人均IPV 的锚点为整数1.00，精度不足以支撑两位小数，故按「约9倍量级」呈现
+        label = "千问÷淘宝 ≈ 9倍量级" if title.startswith("决策深度") else f"千问÷淘宝 ≈ {ratio:.2f}×"
+        ax.text(0.97, 0.94, label, transform=ax.transAxes,
                 fontsize=8.4, color=C_GRAY, ha="right", va="top")
     last = list(axes.flat)[-1]
     last.axis("off")
@@ -449,7 +460,7 @@ def fig07_engagement():
               "本图的判读顺序\n\n"
               "① DAU 与人均IPV 的两组倍数方向相反、量级相近，\n"
               "   几近相互抵消，乘积为 0.78×——因此\n"
-              "   「DAU领先11.63倍、浏览量只领先1.28倍」与\n"
+              "   「DAU为11.63倍、浏览量仅为1.28倍」与\n"
               "   「人均IPV约差9倍」是同一事实的两种表述。\n\n"
               "② 真正提供额外信息的是「每轮对话产出」：\n"
               "   差距落在交互层（0.085 对 0.357 次／轮），\n"
@@ -458,7 +469,7 @@ def fig07_engagement():
               "   「是否愿意再来」，而在「来了是否进入选品」。",
               fontsize=8.2, color=INK_TEXT, va="top", linespacing=1.5)
 
-    fig.suptitle("图7  规模大不等于价值大：DAU领先11.63倍，有效商品浏览量只领先1.28倍（内部口径 P3）",
+    fig.suptitle("图7  规模大不等于价值大：淘宝侧DAU为千问侧的11.63倍，有效商品浏览量仅为1.28倍（内部口径 P3）",
                  fontsize=12, x=0.01, ha="left", fontweight="bold")
     fig.tight_layout(rect=[0, 0.03, 1, 0.93])
     footer(fig,
@@ -474,7 +485,9 @@ def fig07_engagement():
            "故全文的深度倍数一律表述为「约9倍量级」，本图标注亦加约等号。\n"
            "可比性提示：①两侧入口曝光机制不同（淘宝为高流量电商App内的入口曝光，千问为用户主动触发的通用助手场景），"
            "DAU统计的意图强度不一致；②淘宝站内用户可绕过AI链路直达商品，归因规则可能低估其IPV——即便按低估2～3倍折算，"
-           "深度差距仍为约3～4.5倍，方向性结论不变；③IPV为日度口径、轮次为会话内均值，相除结果为近似量级。\n" + COMPILER)
+           "深度差距仍为约3～4.5倍，方向性结论不变；③IPV为日度口径、轮次为会话内均值，「每轮产出」只在「每人每日约1个会话」时才严格成立——"
+           "敏感度：若千问侧的人均日会话数为淘宝侧的1.5倍，则每轮产出之比由4.22倍降至约2.8倍；若为2倍，降至约2.1倍。"
+           "在两侧会话数之比不超过2倍的范围内，交互层差距大于留存层差距（1.10～1.20倍）这一方向性结论不变。\n" + COMPILER)
     fig.savefig(OUT / "fig07_instore_assistant_engagement.png")
     plt.close(fig)
 
@@ -567,7 +580,7 @@ def fig09_scorecard():
            "本图的主要事实：面板①只有一根柱——站内AI导购在全球范围内仅有Amazon Rufus一个公开的效果数据点，且为观察性对比。"
            "这既说明该方向的公开证据基础很薄，也说明自建实验能力是获得可决策数字的唯一途径。\n"
            "因果性提示：面板①与②的全部数值均为观察性对比。「Rufus使用者购买完成率+60%」中主动使用AI工具的用户购买意向本就更强，存在自选择偏差；"
-           "Adobe与Shopify的渠道对比未控制访客构成差异，且同期AI渠道流量增长约4.9倍，访客构成必然发生迁移。均应视为相关性上限而非因果效应。\n"
+           "Adobe与Shopify的渠道对比未控制访客构成差异，且同期AI渠道流量增至约4.9倍（累计指数100→493），访客构成必然发生迁移。均应视为相关性上限而非因果效应。\n"
            "同构造差异说明：Adobe（+42%）与Shopify（+54%）测量同一构造但相差12个百分点，来自面板差异——Adobe覆盖美国大型零售网站，"
            "Shopify以中小与DTC商家为主，且Shopify未披露完整方法。两者应作为区间理解（约+42%～+54%），不取单点。\n"
            "未纳入说明：Salesforce「部署自有品牌Agent的零售商增速6.2%对未部署3.9%」为企业层分组对比（第三种对照构造），"

@@ -7,7 +7,7 @@
 | 文件 | 说明 |
 |---|---|
 | `report/AI电商行业研究报告.md` | 研究报告正文 |
-| `report/AI电商行业研究报告.pptx` | 汇报PPT（36页，16:9） |
+| `report/AI电商行业研究报告.pptx` | 汇报PPT（37页，16:9） |
 | `report/pptx_outline.md` | PPT文字稿（自动生成） |
 | `charts/*.png` | 报告配套图表（每张均附数据来源、口径说明与编制说明） |
 
@@ -68,8 +68,8 @@ docs/
   03_零售与生鲜结合点.md
   04_产品与PM机会地图.md
   05_数据源手册与访谈提纲.md
-  06_研究报告评分标准.md
-  07_评分记录.md
+  06_研究报告评分标准.md   # 内部质量控制，不随成果物对外
+  07_评分记录.md           # 内部质量控制，不随成果物对外
 data/                   # 数据底表（CSV）
 scripts/make_charts.py  # 图表生成
 scripts/make_pptx.py    # PPT生成
