@@ -13,6 +13,7 @@
   图9  站内AI导购与站外AI引荐：分口径效果对照
 """
 
+import re
 import sys
 from pathlib import Path
 
@@ -133,6 +134,10 @@ def _wrap(text, budget):
 def footer(fig, text):
     if SLIDE_MODE:
         return
+    # matplotlib 不渲染 markdown，星号会原样出现在图注中，统一转为书名号
+    text = re.sub(r"\*\*(.+?)\*\*", r"「\1」", text)
+    if "*" in text:
+        raise SystemExit(f"图注含未处理的星号：{text[:80]}")
     budget = fig.get_size_inches()[0] * 72 / FOOTER_FS * 0.99
     fig.text(0.01, -0.03, _wrap(text, budget), fontsize=FOOTER_FS, color=C_GRAY,
              ha="left", va="top", linespacing=1.5)
@@ -221,7 +226,7 @@ def fig01_referral_traffic():
     ax2.axvspan(1.0, 3.35, color="#F1F5F9", zorder=0)
     ax2.text(2.15, 3200, "情景测算区间", fontsize=8.5, color=C_GRAY, ha="center")
     ax2.set_xlim(-0.25, 3.35)
-    ax2.set_ylabel("定基流量指数（2025Q1=100，非累计总量）", fontsize=9)
+    ax2.set_ylabel("指数值", fontsize=9)
     ax2.set_ylim(0, 3700)
     ax2.set_title("② 情景外推：AI引荐流量定基水平指数（2025Q1=100，非累计总量）", fontsize=10.5, loc="left")
     ax2.legend(fontsize=8.2, frameon=False, loc="upper left")
@@ -323,7 +328,7 @@ def fig03_holiday():
     footer(fig,
            "数据来源：Salesforce《2025假日购物报告》及Cyber Week报告，基于超过15亿消费者的购物数据。\n"
            "口径说明：「AI与Agent影响的销售」指AI参与推荐、客服或决策过程的订单销售额，属宽口径，不等于在AI对话界面内完成结账的交易（两者地域与周期不同，不可相除取倍数；量级参照见图4）。\n"
-           "读图提示：柱高与柱上标注均为**销售额**口径；Salesforce另按**订单**口径给出「AI影响约20%订单」，两个口径数值接近但不等价，不可互换引用。\n"
+           "读图提示：柱高与柱上标注均为「销售额」口径；Salesforce另按「订单」口径给出「AI影响约20%订单」，两个口径数值接近但不等价，不可互换引用。\n"
            "口径提示：右图为部署与未部署自有品牌Agent两组零售商的销售增速对比，属观察性分组，未控制企业规模与品类结构差异；「自有品牌Agent」为企业侧Agent的宽口径，"
            "不等同于站内AI导购工具，故未纳入图9的站内导购证据线。另：假日季Agent自主执行动作同比+142%。\n" + COMPILER)
     fig.savefig(OUT / "fig03_holiday_ai_influence.png")
@@ -373,7 +378,7 @@ def fig04_forecasts():
            "数据来源：eMarketer、Morgan Stanley、Bain、McKinsey、Edgar Dunn 公开预测（2025年10月—12月发布）；全部为机构预测值，非实测数据。\n"
            "口径说明：eMarketer仅统计在AI平台内完成结账的交易（窄口径）；Morgan Stanley为代理自主执行的购买；Bain含代理发起／影响／完成的购买；"
            "McKinsey为代理编排的零售收入（含AI影响决策，宽口径）；Edgar Dunn为零售交易流。\n"
-           "读图提示：横轴为对数轴。**颜色编码口径宽窄**（地域与年份已写在纵轴标签内）；菱形标记为机构点估计，线段为机构给出的区间，两者不可混读。"
+           "读图提示：横轴为对数轴。「颜色编码口径宽窄」（地域与年份已写在纵轴标签内）；菱形标记为机构点估计，线段为机构给出的区间，两者不可混读。"
            "读法（倍数须按可比配对给出）：同地域同年份（美国2030年）表中无窄口径数据点，可比的是中口径下限1900亿至宽口径上限10000亿，相差约5.3倍；窄口径对宽口径需跨年份——eMarketer美国2029年1440亿对McKinsey美国2030年9000至10000亿，相差约6.3至6.9倍。本图不使用「相差一个数量级」这一表述。口径宽窄造成的差距大于同口径内不同机构之间的差距，这是本图要说明的主要事实。"
            "各条目标年份与地域不同，不可直接相加或取均值。\n" + COMPILER)
     fig.savefig(OUT / "fig04_agentic_market_forecasts.png")
@@ -549,8 +554,8 @@ def fig08_scenario():
         ax.set_ylim(0, ymax)
         lo = sub[sub.时点 == "2026年中"]["日均有效商品浏览量_万次"].iloc[0]
         hi = sub["日均有效商品浏览量_万次"].max()
-        ax.text(0.985, 0.70, f"本面板内部跨度：{lo:.0f} → {hi:.0f}万次／日（{hi / lo:.1f}倍）",
-                transform=ax.transAxes, fontsize=8.4, color=C_GRAY, ha="right", va="top")
+        ax.text(0.02, 0.80, f"本面板内部跨度：{lo:.0f} → {hi:.0f}万次／日（{hi / lo:.1f}倍）",
+                transform=ax.transAxes, fontsize=8.4, color=C_GRAY, ha="left", va="top")
     axes[0].set_ylabel("日均有效商品浏览量（万次／日）", fontsize=9)
 
     suptitle(fig, "图8  情景测算：两侧驱动结构不同——淘宝靠深度与规模双轮，千问几乎全靠规模（非预测）",
@@ -558,7 +563,7 @@ def fig08_scenario():
     fig.tight_layout(rect=[0, 0.05, 1, 0.92])
     footer(fig,
            "数据来源：2026年中基期为业务方提供的内部运营口径数据（见图7）；2027—2028年为本报告按公开锚点设定假设后的测算，非任何机构预测。\n"
-           "读图提示：两面板**共用同一纵轴**，可直接比较——2026年中两侧基期接近（55对43万次／日），到2028年中乐观档才拉开约2.8倍。"
+           "读图提示：两面板「共用同一纵轴」，可直接比较——2026年中两侧基期接近（55对43万次／日），到2028年中乐观档才拉开约2.8倍。"
            "柱上三行依次为有效商品浏览量、DAU、人均IPV，便于核对乘积来源；图表与报告正文共用同一取整规则（ROUND_HALF_UP）。\n"
            "测算方法：日均有效商品浏览量＝DAU×人均IPV，两项分别按情景假设的年增长倍数逐期复利推演"
            "（假设明细见 data/instore_scenario_assumptions.csv，含展示取整列的中间结果见 data/_computed_scenarios.csv）。\n"
@@ -569,7 +574,7 @@ def fig08_scenario():
            "设定两年累计深度提升不超过20%（乐观档约1.20次）。两侧上限性质不同，不可混用。\n"
            "使用限制：本测算仅推演流量与浏览深度，未推演成交额；由浏览量到GMV需引入详情页转化率与客单价两项敞口参数，"
            "本报告不做单点估计，避免用假设堆叠出规模结论。另需注意：本图的区间宽度（淘宝侧约5.9倍）全部来自DAU与人均IPV两个流量层假设，"
-           "并不包含转化率与客单价的敞口，因此它衡量的是**流量层自身**的不确定性。\n" + COMPILER)
+           "并不包含转化率与客单价的敞口，因此它衡量的是「流量层自身」的不确定性。\n" + COMPILER)
     fig.savefig(OUT / "fig08_instore_scenario_projection.png")
     plt.close(fig)
 
@@ -603,7 +608,7 @@ def fig09_scorecard():
     fig.tight_layout(rect=[0, 0.06, 1, 0.895])
     footer(fig,
            "数据来源：亚马逊2025Q4财报电话会（Rufus三项，公司口径）；Adobe Digital Insights（2026年3月转化与RPV、2026Q1流量增速）；Shopify公开披露（2026年5月）。\n"
-           "分面板规则：**按对照组构造分面板**，同一面板内的对照组与量纲一致，避免跨构造的无效排名。面板①为「使用者对未使用者」（个体层对比），"
+           "分面板规则：「按对照组构造分面板」，同一面板内的对照组与量纲一致，避免跨构造的无效排名。面板①为「使用者对未使用者」（个体层对比），"
            "面板②为「AI渠道对非AI渠道」（渠道层对比），面板③为同比增速。颜色区分证据线（站内自有导购／站外AI引荐）。三个面板之间不可合并为单一区间。\n"
            "面板②内含两类指标：转化率优势（Adobe +42%、Shopify +54%）与单次访问收入优势（Adobe RPV +37%），二者对照组构造相同但被测量的量不同，已在标签中写明。\n"
            "本图的主要事实：面板①只有一根柱——站内AI导购在全球范围内仅有Amazon Rufus一个公开的效果数据点，且为观察性对比。"
