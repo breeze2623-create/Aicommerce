@@ -8,6 +8,6 @@ industry,旅游,233,实际
 industry,金融服务,158,实际
 industry,媒体娱乐,84,实际
 industry,科技软件,63,实际
-scenario_param,保守,30,增速年衰减系数pct
-scenario_param,中性,40,增速年衰减系数pct
-scenario_param,乐观,55,增速年衰减系数pct
+scenario_param,保守,30,增速年保留系数pct
+scenario_param,中性,40,增速年保留系数pct
+scenario_param,乐观,55,增速年保留系数pct
