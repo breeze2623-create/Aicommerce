@@ -13,6 +13,7 @@
   图9  站内AI导购与站外AI引荐：分口径效果对照
 """
 
+import sys
 from pathlib import Path
 
 import matplotlib
@@ -26,8 +27,12 @@ from matplotlib.patches import Patch
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / "data"
-OUT = ROOT / "charts"
-OUT.mkdir(exist_ok=True)
+
+# 报告版（charts/）内嵌标题与四段式脚注，供文档独立阅读；
+# 演示版（charts/slide/）去掉内嵌标题与脚注，由PPT的页面标题与页级注承载，避免双标题与放映尺度下不可读的微字。
+SLIDE_MODE = "--slides" in sys.argv
+OUT = ROOT / ("charts/slide" if SLIDE_MODE else "charts")
+OUT.mkdir(parents=True, exist_ok=True)
 
 plt.rcParams["font.sans-serif"] = ["WenQuanYi Micro Hei", "Droid Sans Fallback", "sans-serif"]
 plt.rcParams["axes.unicode_minus"] = False
@@ -58,6 +63,16 @@ BASE = {
 
 
 FOOTER_FS = 7.2
+
+
+def suptitle(fig, text, **kw):
+    if not SLIDE_MODE:
+        fig.suptitle(text, **kw)
+
+
+def maintitle(ax, text, **kw):
+    if not SLIDE_MODE:
+        ax.set_title(text, **kw)
 
 
 def r0(x):
@@ -109,6 +124,8 @@ def _wrap(text, budget):
 
 
 def footer(fig, text):
+    if SLIDE_MODE:
+        return
     budget = fig.get_size_inches()[0] * 72 / FOOTER_FS * 0.99
     fig.text(0.01, -0.03, _wrap(text, budget), fontsize=FOOTER_FS, color=C_GRAY,
              ha="left", va="top", linespacing=1.5)
@@ -203,7 +220,7 @@ def fig01_referral_traffic():
     ax2.legend(fontsize=8.2, frameon=False, loc="upper left")
     ax2.grid(axis="y", linestyle=":", alpha=0.5)
 
-    fig.suptitle("图1  美国零售网站AI引荐流量：已实现增速与累计指数情景外推",
+    suptitle(fig, "图1  美国零售网站AI引荐流量：已实现增速与累计指数情景外推",
                  fontsize=12, x=0.01, ha="left", fontweight="bold")
     fig.tight_layout(rect=[0, 0.04, 1, 0.91])
     footer(fig,
@@ -239,7 +256,8 @@ def fig02_traffic_quality():
     ax1.set_xticks(x)
     ax1.set_xticklabels(["2025年3月", "2026年3月"], fontsize=10)
     ax1.set_ylim(-80, 70)
-    ax1.set_title("AI引荐流量质量一年内完成逆转", fontsize=10.5, loc="left")
+    ax1.set_ylabel("相对非AI渠道（%）", fontsize=9)
+    ax1.set_title("质量指标一年内完成反转", fontsize=10.5, loc="left")
     ax1.legend(fontsize=8.5, frameon=False, loc="lower right")
     ax1.grid(axis="y", linestyle=":", alpha=0.5)
 
@@ -249,7 +267,7 @@ def fig02_traffic_quality():
     ax2.set_ylabel("相对非AI来源（%）", fontsize=9)
     ax2.set_ylim(0, 60)
     ax2.grid(axis="y", linestyle=":", alpha=0.5)
-    fig.suptitle("图2  AI引荐流量的质量指标一年内反转：转化率由−38%转为+42%（渠道观察性对比）",
+    suptitle(fig, "图2  AI引荐流量的质量指标一年内反转：转化率由−38%转为+42%（渠道观察性对比）",
                  fontsize=11.5, x=0.01, ha="left", fontweight="bold")
     fig.tight_layout(rect=[0, 0.04, 1, 0.92])
     footer(fig,
@@ -292,7 +310,7 @@ def fig03_holiday():
     ax2.set_ylim(0, 8)
     ax2.set_title("自有品牌Agent与销售增速", fontsize=10.5, loc="left")
     ax2.grid(axis="y", linestyle=":", alpha=0.5)
-    fig.suptitle("图3  假日季AI影响的销售约2620亿美元，但这是「影响」宽口径而非AI界面内成交",
+    suptitle(fig, "图3  假日季AI影响的销售约2620亿美元，但这是「影响」宽口径而非AI界面内成交",
                  fontsize=11.5, x=0.01, ha="left", fontweight="bold")
     fig.tight_layout(rect=[0, 0.04, 1, 0.91])
     footer(fig,
@@ -336,7 +354,7 @@ def fig04_forecasts():
     ax.set_xlim(10, 20000)
     ax.xaxis.set_major_formatter(mticker.FuncFormatter(lambda val, _: f"{val:,.0f}"))
     ax.set_xlabel("预测规模（十亿美元，对数轴）", fontsize=9)
-    ax.set_title("图4  代理式商务规模预测：口径宽窄（颜色）造成的差距大于机构之间的差距",
+    maintitle(ax, "图4  代理式商务规模预测：口径宽窄造成的差距大于机构之间的差距",
                  fontsize=11.5, loc="left", fontweight="bold")
     ax.legend(handles=[Patch(color=C_BLUE, label="窄口径：仅AI平台内结账"),
                        Patch(color=C_GREEN, label="中口径：代理自主执行的购买"),
@@ -364,7 +382,7 @@ def fig05_china_private():
     ax.bar_label(bars, fmt="%.2f", fontsize=9.5, label_type="center", color="white", fontweight="bold")
     ax.set_ylabel("市场规模（万亿元）", fontsize=9)
     ax.set_ylim(0, 4.0)
-    ax.set_title("图5  中国AI私域电商：渗透率预测升至约3.8倍，而隐含的私域底盘五年只增约36%",
+    maintitle(ax, "图5  中国AI私域电商：渗透率预测升至约3.8倍，而隐含的私域底盘五年只增约36%",
                  fontsize=11.2, loc="left", fontweight="bold")
     ax2 = ax.twinx()
     ax2.plot(df["年份"].astype(str), df["渗透率_pct"], color=C_BLUE, marker="o", linewidth=2)
@@ -404,7 +422,7 @@ def fig06_entrance_scale():
                 f"{r.展示标签}｜{r.口径}｜{r.时点}", va="center", fontsize=8.5)
     ax.set_xlim(0, 13.5)
     ax.set_xlabel("用户规模（亿）", fontsize=9)
-    ax.set_title("图6  中国与海外主要AI购物入口用户规模对照（统计窗口不同，仅作量级参照）",
+    maintitle(ax, "图6  中国与海外主要AI购物入口用户规模对照（统计窗口不同，仅作量级参照）",
                  fontsize=12, loc="left", fontweight="bold")
     ax.legend(handles=[Patch(color=C_RED, label="国内"), Patch(color=C_BLUE, label="海外")],
               loc="lower right", fontsize=9, frameon=False)
@@ -469,7 +487,7 @@ def fig07_engagement():
               "   「是否愿意再来」，而在「来了是否进入选品」。",
               fontsize=8.2, color=INK_TEXT, va="top", linespacing=1.5)
 
-    fig.suptitle("图7  规模大不等于价值大：淘宝侧DAU为千问侧的11.63倍，有效商品浏览量仅为1.28倍（内部口径 P3）",
+    suptitle(fig, "图7  规模大不等于价值大：淘宝侧DAU为千问侧的11.63倍，有效商品浏览量仅为1.28倍（内部口径 P3）",
                  fontsize=12, x=0.01, ha="left", fontweight="bold")
     fig.tight_layout(rect=[0, 0.03, 1, 0.93])
     footer(fig,
@@ -524,7 +542,7 @@ def fig08_scenario():
         ax.set_ylim(0, ymax)
     axes[0].set_ylabel("日均有效商品浏览量（万次／日）", fontsize=9)
 
-    fig.suptitle("图8  情景测算：两侧的驱动结构不同——淘宝靠深度与规模双轮，千问几乎全靠规模（非预测）",
+    suptitle(fig, "图8  情景测算：两侧驱动结构不同——淘宝靠深度与规模双轮，千问几乎全靠规模（非预测）",
                  fontsize=11.5, x=0.01, ha="left", fontweight="bold")
     fig.tight_layout(rect=[0, 0.05, 1, 0.92])
     footer(fig,
@@ -567,7 +585,7 @@ def fig09_scorecard():
         ax.set_xlabel(xlabel, fontsize=8.6)
         ax.grid(axis="x", linestyle=":", alpha=0.5)
         ax.tick_params(axis="y", labelsize=8.2)
-    fig.suptitle("图9  站内AI导购的公开效果证据只有一个数据点（面板①）",
+    suptitle(fig, "图9  站内AI导购的公开效果证据只有一个数据点（面板①）",
                  fontsize=12, x=0.01, ha="left", fontweight="bold")
     fig.legend(handles=[Patch(color=C_GREEN, label="站内自有导购"), Patch(color=C_BLUE, label="站外AI引荐")],
                fontsize=8.5, frameon=False, ncol=2, loc="upper right", bbox_to_anchor=(0.995, 0.995))
