@@ -11,6 +11,7 @@
   图7  站内AI导购运营指标对照（内部口径）
   图8  站内AI导购有效商品浏览量情景测算
   图9  站内AI导购与站外AI引荐：分口径效果对照
+  图10 AI导购 vs 传统电商导购：进商详效率对照
 """
 
 import re
@@ -628,6 +629,169 @@ def fig09_scorecard():
     plt.close(fig)
 
 
+# ---------------------------------------------------------------- 图10
+def fig10_ai_vs_traditional():
+    """AI导购 vs 传统电商导购：只画有公开可追溯或内部实测支撑的指标；空值不画柱。"""
+    import math
+
+    # 进商详到达率：传统＝有点击率下界；AI两侧＝1−e^(−人均IPV)
+    reach = {
+        "传统搜索\n（淘宝）": 90.0,
+        "淘宝\nAI导购": (1 - math.exp(-0.11)) * 100,
+        "千问\n电商场景": (1 - math.exp(-1.00)) * 100,
+    }
+    reach_colors = [C_GREEN, C_RED, C_BLUE]
+    reach_notes = [">=90%\n（有点击率下界）", f"≈{reach['淘宝\nAI导购']:.1f}%\n（日度派生）", f"≈{reach['千问\n电商场景']:.1f}%\n（日度派生）"]
+
+    # 规模：App DAU vs 功能 DAU（搜索功能DAU未取得，用App作天花板）
+    scale_labels = ["淘宝App\nDAU", "淘宝\nAI导购", "千问\n电商场景"]
+    scale_vals = [40200.0, 500.0, 43.0]
+    scale_colors = [C_GREEN, C_RED, C_BLUE]
+    scale_fmts = ["4.02亿", "500万", "43万"]
+    ai_share = 500.0 / 40200.0 * 100  # ≈1.24%
+
+    # 转化率锚点：App层有值，AI链路空
+    conv_labels = ["淘宝App", "行业均值", "AI导购链路"]
+    conv_vals = [8.2, 4.5, None]
+    conv_colors = [C_GREEN, C_GRAY, C_PALE]
+
+    # 每交互商品产出：传统空，AI有派生
+    yield_labels = ["传统搜索\n每次搜索IPV", "淘宝AI\n每轮产出", "千问\n每轮产出"]
+    yield_vals = [None, 0.085, 0.357]
+    yield_colors = [C_PALE, C_RED, C_BLUE]
+
+    # Hybrid相对提升（传统搜推被大模型增强）
+    hybrid_labels = ["复杂词\n相关性", "推荐信息流\n点击率"]
+    hybrid_vals = [20.0, 10.0]
+    hybrid_units = ["+20 PT", "+10%"]
+
+    fig, axes = plt.subplots(2, 3, figsize=(13.2, 6.4))
+
+    # --- 面板1：进商详到达率（核心）
+    ax = axes[0, 0]
+    bars = ax.bar(list(reach.keys()), list(reach.values()), color=reach_colors, width=0.55, alpha=0.92)
+    ax.bar_label(bars, labels=reach_notes, fontsize=8.2, padding=2, fontweight="bold")
+    ax.set_title("① 进商详到达率（核心对照）", fontsize=9.8, loc="left", fontweight="bold")
+    ax.set_ylabel("%", fontsize=8.5)
+    ax.set_ylim(0, 118)
+    ax.axhline(90, color=C_GREEN, linestyle="--", linewidth=0.8, alpha=0.5)
+    ax.grid(axis="y", linestyle=":", alpha=0.45)
+    ax.tick_params(axis="x", labelsize=8.2)
+    ax.text(0.97, 0.06, "构造不同：左＝单次搜索有点击；\n右二＝日度至少1次商详（派生）",
+            transform=ax.transAxes, fontsize=7.2, color=C_GRAY, ha="right", va="bottom")
+
+    # --- 面板2：规模
+    ax = axes[0, 1]
+    bars = ax.bar(scale_labels, scale_vals, color=scale_colors, width=0.55, alpha=0.92)
+    ax.bar_label(bars, labels=scale_fmts, fontsize=9, padding=2, fontweight="bold")
+    ax.set_yscale("log")
+    ax.set_title("② 使用规模（对数轴）", fontsize=9.8, loc="left", fontweight="bold")
+    ax.set_ylabel("万人（对数）", fontsize=8.5)
+    ax.set_ylim(20, 120000)
+    ax.grid(axis="y", linestyle=":", alpha=0.45)
+    ax.tick_params(axis="x", labelsize=8.2)
+    ax.text(0.97, 0.94, f"淘宝AI ≈ App DAU的 {ai_share:.1f}%",
+            transform=ax.transAxes, fontsize=8.0, color=C_GRAY, ha="right", va="top")
+    ax.text(0.97, 0.06, "搜索功能DAU未公开；\nApp DAU仅为天花板参照",
+            transform=ax.transAxes, fontsize=7.2, color=C_GRAY, ha="right", va="bottom")
+
+    # --- 面板3：转化率锚点
+    ax = axes[0, 2]
+    plot_vals = [v if v is not None else 0 for v in conv_vals]
+    bars = ax.bar(conv_labels, plot_vals, color=conv_colors, width=0.55, alpha=0.92)
+    labels = ["8.2%", "4.5%", "未取得"]
+    for b, lab, v in zip(bars, labels, conv_vals):
+        if v is None:
+            ax.text(b.get_x() + b.get_width() / 2, 1.2, "未取得\n（P4不展示）",
+                    ha="center", va="bottom", fontsize=8.2, color=C_GRAY, fontweight="bold")
+            b.set_hatch("//")
+            b.set_edgecolor("white")
+            b.set_height(0.15)
+        else:
+            ax.text(b.get_x() + b.get_width() / 2, v + 0.25, lab,
+                    ha="center", va="bottom", fontsize=9.5, fontweight="bold")
+    ax.set_title("③ 转化率锚点（App层 ≠ AI链路）", fontsize=9.8, loc="left", fontweight="bold")
+    ax.set_ylabel("%", fontsize=8.5)
+    ax.set_ylim(0, 12)
+    ax.grid(axis="y", linestyle=":", alpha=0.45)
+    ax.tick_params(axis="x", labelsize=8.2)
+    ax.text(0.97, 0.94, "淘宝意图明确用户转化\n显著高于行业均值",
+            transform=ax.transAxes, fontsize=7.4, color=C_GRAY, ha="right", va="top")
+
+    # --- 面板4：每交互产出
+    ax = axes[1, 0]
+    plot_vals = [v if v is not None else 0 for v in yield_vals]
+    bars = ax.bar(yield_labels, plot_vals, color=yield_colors, width=0.55, alpha=0.92)
+    for b, v in zip(bars, yield_vals):
+        if v is None:
+            ax.text(b.get_x() + b.get_width() / 2, 0.02, "未取得\n平台级绝对值",
+                    ha="center", va="bottom", fontsize=8.0, color=C_GRAY, fontweight="bold")
+            b.set_hatch("//")
+            b.set_edgecolor("white")
+            b.set_height(0.012)
+        else:
+            ax.text(b.get_x() + b.get_width() / 2, v + 0.012, f"{v:.3f}",
+                    ha="center", va="bottom", fontsize=9.5, fontweight="bold")
+    ax.set_title("④ 每交互商品产出（交互层）", fontsize=9.8, loc="left", fontweight="bold")
+    ax.set_ylabel("次／交互", fontsize=8.5)
+    ax.set_ylim(0, 0.48)
+    ax.grid(axis="y", linestyle=":", alpha=0.45)
+    ax.tick_params(axis="x", labelsize=7.8)
+    ax.text(0.97, 0.94, "商家侧IPV/UV=1.5~3属店级经验，\nP4不采纳为平台搜索基线",
+            transform=ax.transAxes, fontsize=7.0, color=C_GRAY, ha="right", va="top")
+
+    # --- 面板5：Hybrid相对提升
+    ax = axes[1, 1]
+    bars = ax.bar(hybrid_labels, hybrid_vals, color=[C_AMBER, C_AMBER], width=0.5, alpha=0.92)
+    ax.bar_label(bars, labels=hybrid_units, fontsize=10, padding=3, fontweight="bold")
+    ax.set_title("⑤ 传统搜推被大模型增强（相对提升）", fontsize=9.8, loc="left", fontweight="bold")
+    ax.set_ylabel("相对提升", fontsize=8.5)
+    ax.set_ylim(0, 28)
+    ax.grid(axis="y", linestyle=":", alpha=0.45)
+    ax.tick_params(axis="x", labelsize=8.2)
+    ax.text(0.97, 0.94, "AB测试（阿里官方披露）\n说明：是相对提升，非绝对CTR",
+            transform=ax.transAxes, fontsize=7.2, color=C_GRAY, ha="right", va="top")
+
+    # --- 面板6：读法
+    ax = axes[1, 2]
+    ax.axis("off")
+    ax.text(0.0, 0.96,
+            "本图的判读顺序\n\n"
+            "① 进商详效率：传统搜索有点击率≥90%，\n"
+            "   淘宝AI日度商详发生率仅≈10%——\n"
+            "   即使构造不完全相同，量级差距约一个\n"
+            "   数量级；千问≈63%，仍低于传统搜索。\n\n"
+            "② 规模：淘宝AI DAU仅为App的约1.2%；\n"
+            "   传统搜索仍是意图购物的主入口。\n\n"
+            "③ 转化：App层8.2%证明「有意图就能转」；\n"
+            "   AI链路转化率公开与内部均未取得。\n\n"
+            "④⑤ 交互产出与Hybrid：传统搜索的每次\n"
+            "   搜索IPV绝对值未公开；已知的是传统\n"
+            "   搜推仍在被大模型增强（+20PT／+10%），\n"
+            "   AI导购尚不能替代搜索主链路。",
+            fontsize=8.0, color=INK_TEXT, va="top", linespacing=1.45)
+
+    suptitle(fig,
+             "图10  相对传统搜索，站内AI导购的进商详效率仍差约一个数量级｜公开P1/P2＋内部P3",
+             fontsize=11.8, x=0.01, ha="left", fontweight="bold")
+    fig.tight_layout(rect=[0, 0.03, 1, 0.93])
+    footer(fig,
+           "数据来源：①传统搜索有点击率≥90%——36氪（2025-09-17）引述接近手淘消息人士对传统搜索成熟度的表述（P2下界）；"
+           "淘宝／千问进商详到达率由内部人均IPV按1−e^(−λ)派生（P3派生）。"
+           "②淘宝App DAU 4.02亿——QuestMobile（36氪快讯转引，2025年6月平均日活，P1）。"
+           "③淘宝转化率8.2%／行业4.5%——QuestMobile（36氪2025-09引述，P1）；AI链路转化率未取得。"
+           "④每轮产出同图7派生；传统每次搜索IPV平台级绝对值未公开。"
+           "⑤复杂词相关性+20PT、推荐CTR+10%——阿里搜推智能总裁凯夫，新浪科技双11报道（2025-11-12，P2，AB测试相对提升）。\n"
+           "口径说明：本图把「传统电商导购」操作化为淘宝传统搜索（含搜推Hybrid），不含直播带货与人工客服——后两者缺少与AI导购同构造的平台级公开效率数据，"
+           "商家侧客服询单转化经验值（约15%～30%）与店级IPV/UV经验区间（1.5～3）属P4，本报告不展示。\n"
+           "构造差异（不可省略）：面板①左侧为「单次搜索会话的有点击率」，右侧为「日度至少产生1次商详的发生率」；二者分母与时间窗不同，"
+           "只能作量级对照，不能直接相减得出「效率差X个百分点」。面板②的App DAU不是搜索功能DAU。面板③的App转化率不是AI链路转化率。\n"
+           "判读边界：本图支持「当前站内AI导购在进商详效率上显著低于成熟传统搜索、且规模仍为App的约1%量级」这一方向性判断；"
+           "不支持「AI导购转化优于／劣于搜索」——该判断需AI链路转化率实测后方可作出。\n" + COMPILER)
+    fig.savefig(OUT / "fig10_ai_vs_traditional_guide.png")
+    plt.close(fig)
+
+
 if __name__ == "__main__":
     for stale in OUT.glob("*.png"):
         stale.unlink()
@@ -640,6 +804,7 @@ if __name__ == "__main__":
     fig07_engagement()
     fig08_scenario()
     fig09_scorecard()
+    fig10_ai_vs_traditional()
     print("已生成图表：")
     for path in sorted(OUT.glob("*.png")):
         print(" -", path.relative_to(ROOT))
