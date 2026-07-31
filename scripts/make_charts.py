@@ -12,6 +12,7 @@
   图8  站内AI导购有效商品浏览量情景测算
   图9  站内AI导购与站外AI引荐：分口径效果对照
   图10 AI导购 vs 传统电商导购：进商详效率对照
+  图11 同口径对照：淘宝／千问／Rufus（Rufus七项均未取得）
 """
 
 import re
@@ -792,6 +793,92 @@ def fig10_ai_vs_traditional():
     plt.close(fig)
 
 
+# ---------------------------------------------------------------- 图11
+def fig11_rufus_same_metric_gap():
+    """图7同口径三方对照：淘宝／千问有内部实测；Rufus七项同口径均未取得，空位不填数。"""
+    eng = load_engagement()
+    align = pd.read_csv(DATA / "rufus_engagement_alignment.csv")
+    # 保真闸：对齐表中七项主指标必须全部为「未取得」；若日后有同口径数进入，应改画柱而非静默跳过。
+    core_rows = align[~align["指标"].str.startswith("参考_")]
+    if not (core_rows["Rufus是否取得"] == "否").all():
+        raise SystemExit("fig11 保真闸失败：rufus_engagement_alignment.csv 出现已取得的同口径主指标，须改画柱")
+    if not (core_rows["Rufus同口径数值"] == "—").all():
+        raise SystemExit("fig11 保真闸失败：Rufus同口径数值列不应填入推算值")
+
+    products = ["淘宝AI导购", "千问电商场景"]
+    colors = [C_RED, C_BLUE]
+    labels = ["淘宝\nAI导购", "千问\n电商场景", "Amazon\nRufus"]
+    per_turn = [eng.loc[p_, "人均IPV"] / eng.loc[p_, "人均对话轮次"] for p_ in products]
+    views = [eng.loc[p_, "DAU"] * eng.loc[p_, "人均IPV"] for p_ in products]
+
+    panels = [
+        ("使用规模：DAU", [eng.loc[p_, "DAU"] for p_ in products], "万人", "{:.0f}", False),
+        ("决策深度：人均IPV", [eng.loc[p_, "人均IPV"] for p_ in products], "次/人·日", "{:.2f}", False),
+        ("会话深度：人均对话轮次", [eng.loc[p_, "人均对话轮次"] for p_ in products], "轮/会话", "{:.1f}", False),
+        ("派生：每轮对话产出的商品浏览", per_turn, "次/轮", "{:.3f}", True),
+        ("次日留存率", [eng.loc[p_, "次日留存率"] for p_ in products], "%", "{:.0f}%", False),
+        ("7日回访率", [eng.loc[p_, "7日回访率"] for p_ in products], "%", "{:.0f}%", False),
+        ("派生：日均有效商品浏览量", views, "万次/日", "{:.0f}", True),
+    ]
+
+    fig, axes = plt.subplots(2, 4, figsize=(13.6, 6.4))
+    for ax, (title, vals, unit, fmt, derived) in zip(axes.flat, panels):
+        xs = [0, 1, 2]
+        bars = ax.bar(xs[:2], vals, color=colors, width=0.55, alpha=0.92,
+                      hatch="//" if derived else None, edgecolor="white" if derived else None)
+        ax.bar_label(bars, labels=[fmt.format(v) for v in vals], fontsize=9.5, padding=3, fontweight="bold")
+        # Rufus：同口径未取得 —— 不画假柱，只标空位
+        ax.scatter([2], [0], marker="x", s=70, color=C_GRAY, zorder=3, linewidths=1.6)
+        ax.text(2, max(vals) * 0.08, "未取得\n同口径", ha="center", va="bottom",
+                fontsize=8.2, color=C_GRAY, linespacing=1.25)
+        ax.set_xticks(xs)
+        ax.set_xticklabels(labels, fontsize=8.4)
+        ax.set_title(title, fontsize=9.4, loc="left", color=C_GRAY if derived else "black")
+        ax.set_ylabel(unit, fontsize=8.3)
+        ax.set_ylim(0, max(vals) * 1.60)
+        ax.grid(axis="y", linestyle=":", alpha=0.45)
+        ratio = vals[1] / vals[0] if vals[0] else 0
+        label = "千问÷淘宝 ≈ 9倍量级｜Rufus —" if title.startswith("决策深度") else f"千问÷淘宝 ≈ {ratio:.2f}×｜Rufus —"
+        ax.text(0.98, 0.94, label, transform=ax.transAxes,
+                fontsize=7.6, color=C_GRAY, ha="right", va="top")
+
+    last = list(axes.flat)[-1]
+    last.axis("off")
+    last.text(
+        0.0, 0.96,
+        "独立校验结论（保真）\n\n"
+        "① 图7的七项指标在Rufus侧均无同口径公开值：\n"
+        "   DAU／人均IPV／对话轮次／次日留存／7日回访\n"
+        "   及两项派生指标——全部标「未取得」，不推算填数。\n\n"
+        "② Rufus实际披露的是另一套口径（不可混入本图）：\n"
+        "   年度累计使用用户超3亿（≠DAU）；\n"
+        "   月活同比+149%、交互量同比+210%（≠绝对值）；\n"
+        "   购买完成率相对未使用者约高60%（效果对照，见图9）；\n"
+        "   增量年化销售近120亿美元（归因未完整披露）。\n\n"
+        "③ 校验范围：亚马逊2025Q4财报电话会、2026Q2新闻稿、\n"
+        "   公司产品说明及交叉二手报道；底表见\n"
+        "   data/rufus_engagement_alignment.csv。",
+        fontsize=7.9, color=INK_TEXT, va="top", linespacing=1.45,
+    )
+
+    suptitle(fig,
+             "图11  同口径对照：淘宝／千问有实测，Rufus七项均未取得（空位不填数｜保真校验）",
+             fontsize=12, x=0.01, ha="left", fontweight="bold")
+    fig.tight_layout(rect=[0, 0.03, 1, 0.93])
+    footer(fig,
+           "数据来源：淘宝／千问七项同图7（内部运营口径P3）；Rufus侧经独立校验后确认无同口径公开值，故空位标注「未取得」——"
+           "对齐底表见 data/rufus_engagement_alignment.csv。\n"
+           "口径说明（与图7完全一致，便于逐项对照）：DAU=功能／场景去重日活跃；人均IPV=每使用用户日均经该链路的商品详情页浏览；"
+           "人均对话轮次=单次会话内平均轮数；次日留存=D+1回访占比；7日回访率=7日窗口至少回访一次（非第7日单日留存）；"
+           "派生：每轮产出＝人均IPV÷人均对话轮次；日均有效商品浏览量＝DAU×人均IPV。\n"
+           "不可替代说明：Rufus的「年度累计使用用户」「月活同比」「交互量同比」「购买完成率＋60%」「增量年化销售」分属规模累计、增速、效果对照与成交归因，"
+           "与上列运营参与度指标构造不同，禁止折算填入本图空位；已取得者分别落在图6／图8脚注／图9面板①与§2.3.1。\n"
+           "保真规则：本图脚本含闸——若对齐表主指标出现「已取得」或非「—」数值而仍画空位，生成时直接报错；禁止用跨口径推算补柱。\n"
+           + COMPILER)
+    fig.savefig(OUT / "fig11_rufus_same_metric_gap.png")
+    plt.close(fig)
+
+
 if __name__ == "__main__":
     for stale in OUT.glob("*.png"):
         stale.unlink()
@@ -805,6 +892,7 @@ if __name__ == "__main__":
     fig08_scenario()
     fig09_scorecard()
     fig10_ai_vs_traditional()
+    fig11_rufus_same_metric_gap()
     print("已生成图表：")
     for path in sorted(OUT.glob("*.png")):
         print(" -", path.relative_to(ROOT))
