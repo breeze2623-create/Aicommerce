@@ -13,6 +13,7 @@
   图9  站内AI导购与站外AI引荐：分口径效果对照
   图10 AI导购 vs 传统电商导购：进商详效率对照
   图11 同口径对照：淘宝／千问／Rufus（Rufus七项均未取得）
+  图12 Rufus公开披露指标看板（公司口径P2；与图7不同构造）
 """
 
 import re
@@ -614,7 +615,7 @@ def fig09_scorecard():
                fontsize=8.5, frameon=False, ncol=2, loc="upper right", bbox_to_anchor=(0.995, 0.995))
     fig.tight_layout(rect=[0, 0.06, 1, 0.895])
     footer(fig,
-           "数据来源：亚马逊2025Q4财报电话会（Rufus三项，公司口径）；Adobe Digital Insights（2026年3月转化与RPV、2026Q1流量增速）；Shopify公开披露（2026年5月）。\n"
+           "数据来源：亚马逊2025Q4财报电话会（Rufus购买完成率，公司口径）；亚马逊2025Q3财报电话会与2025-11-18产品公告（Rufus月活同比+140%／+149%、交互同比+210%）；Adobe Digital Insights（2026年3月转化与RPV、2026Q1流量增速）；Shopify公开披露（2026年5月）。\n"
            "分面板规则：「按对照组构造分面板」，同一面板内的对照组与量纲一致，避免跨构造的无效排名。面板①为「使用者对未使用者」（个体层对比），"
            "面板②为「AI渠道对非AI渠道」（渠道层对比），面板③为同比增速。颜色区分证据线（站内自有导购／站外AI引荐）。三个面板之间不可合并为单一区间。\n"
            "面板②内含两类指标：转化率优势（Adobe +42%、Shopify +54%）与单次访问收入优势（Adobe RPV +37%），二者对照组构造相同但被测量的量不同，已在标签中写明。\n"
@@ -879,6 +880,180 @@ def fig11_rufus_same_metric_gap():
     plt.close(fig)
 
 
+# ---------------------------------------------------------------- 图12
+def fig12_rufus_disclosed():
+    """Rufus实际公开披露指标看板（与图7视觉结构类似，但指标构造不同）。
+
+    保真约束（盲评整改）：
+    - 禁止画未取得的 DAU/IPV/留存/轮次柱
+    - 禁止将「接近翻倍／超5倍」编码为精确百分比柱
+    - 禁止画 210÷149≈1.41 伪人均倍数柱
+    - 累计用户与增量销售两柱仅为披露进展，禁止在图上标注增长率
+    - Alexa for Shopping 必须隔离面板
+    """
+    df = pd.read_csv(DATA / "rufus_disclosed_metrics.csv")
+    # ---- 保真闸 ----
+    forbidden = df[df["作图规则"].astype(str).str.contains("禁止画柱", na=False)]
+    for _, row in forbidden.iterrows():
+        v = row.get("数值")
+        if pd.notna(v) and str(v).strip() not in ("", "—", "nan"):
+            raise SystemExit(f"fig12 保真闸失败：禁止画柱行不得填数值 → {row['指标']}={v}")
+    na_rows = df[df["面板组"].str.startswith("未取得")]
+    for _, row in na_rows.iterrows():
+        v = row.get("数值")
+        if pd.notna(v) and str(v).strip() not in ("", "—", "nan"):
+            raise SystemExit(f"fig12 保真闸失败：未取得行不得填数值 → {row['指标']}={v}")
+    merge_rows = df[df["面板组"].str.startswith("合并后")]
+    if not (merge_rows["作图规则"] == "仅文本标签").all():
+        raise SystemExit("fig12 保真闸失败：合并后口径不得画精确数值柱")
+    if df[df["指标"].str.contains("交互增速与月活", na=False)]["作图规则"].iloc[0] != "仅文本":
+        raise SystemExit("fig12 保真闸失败：方向判断不得画倍数柱")
+
+    C_TEAL = "#0F766E"
+    fig, axes = plt.subplots(2, 4, figsize=(13.8, 6.5))
+
+    # 1 累计使用用户（披露进展）
+    ax = axes[0, 0]
+    users = df[(df.指标 == "累计使用用户") & (df.面板组 == "Rufus主面板")]
+    bars = ax.bar(["2025Q3\n披露", "2025全年\n披露"], users["数值"].astype(float),
+                  color=[C_PALE, C_TEAL], width=0.5, alpha=0.92)
+    ax.bar_label(bars, labels=list(users["展示标签"]), fontsize=10, padding=3, fontweight="bold")
+    ax.set_title("规模：累计使用用户（披露进展）", fontsize=9.4, loc="left")
+    ax.set_ylabel("亿人", fontsize=8.3)
+    ax.set_ylim(0, 4.2)
+    ax.grid(axis="y", linestyle=":", alpha=0.45)
+    ax.text(0.98, 0.94, "≠日活／月活｜禁止算增长率", transform=ax.transAxes,
+            fontsize=7.4, color=C_GRAY, ha="right", va="top")
+
+    # 2 月活同比（两次披露）
+    ax = axes[0, 1]
+    mau = df[df.指标 == "月活跃用户同比"]
+    bars = ax.bar(["2025Q3\n电话会", "2025-11-18\n产品公告"], mau["数值"].astype(float),
+                  color=[C_BLUE, C_TEAL], width=0.5, alpha=0.92)
+    ax.bar_label(bars, labels=list(mau["展示标签"]), fontsize=10, padding=3, fontweight="bold")
+    ax.set_title("增速：月活跃用户同比", fontsize=9.4, loc="left")
+    ax.set_ylabel("%", fontsize=8.3)
+    ax.set_ylim(0, 220)
+    ax.grid(axis="y", linestyle=":", alpha=0.45)
+    ax.text(0.98, 0.94, "两次披露｜非连续差分", transform=ax.transAxes,
+            fontsize=7.4, color=C_GRAY, ha="right", va="top")
+
+    # 3 交互量同比
+    ax = axes[0, 2]
+    ix = df[df.指标 == "交互量同比"].iloc[0]
+    bars = ax.bar(["Q3与11月\n公告一致"], [float(ix["数值"])], color=C_AMBER, width=0.45, alpha=0.92)
+    ax.bar_label(bars, labels=[ix["展示标签"]], fontsize=10, padding=3, fontweight="bold")
+    ax.set_title("增速：交互量同比", fontsize=9.4, loc="left")
+    ax.set_ylabel("%", fontsize=8.3)
+    ax.set_ylim(0, 280)
+    ax.grid(axis="y", linestyle=":", alpha=0.45)
+    ax.text(0.98, 0.94, "无人均轮次｜≠会话深度", transform=ax.transAxes,
+            fontsize=7.4, color=C_GRAY, ha="right", va="top")
+
+    # 4 购买完成率（观察性）
+    ax = axes[0, 3]
+    pc = df[df.指标 == "使用者购买完成率优势"].iloc[0]
+    bars = ax.bar(["相对未使用者"], [float(pc["数值"])], color=C_GREEN, width=0.45, alpha=0.92,
+                  hatch="//", edgecolor="white")
+    ax.bar_label(bars, labels=[pc["展示标签"]], fontsize=10, padding=3, fontweight="bold")
+    ax.set_title("效果：购买完成率优势（观察性）", fontsize=9.4, loc="left")
+    ax.set_ylabel("%", fontsize=8.3)
+    ax.set_ylim(0, 90)
+    ax.grid(axis="y", linestyle=":", alpha=0.45)
+    ax.text(0.98, 0.94, "自选择偏差｜相关性上限", transform=ax.transAxes,
+            fontsize=7.4, color=C_GRAY, ha="right", va="top")
+
+    # 5 增量年化销售（披露进展）
+    ax = axes[1, 0]
+    sales = df[df.指标 == "增量年化销售"]
+    bars = ax.bar(["2025Q3\n节奏", "2025Q4\n披露"], sales["数值"].astype(float),
+                  color=[C_PALE, C_AMBER], width=0.5, alpha=0.92, hatch="//", edgecolor="white")
+    ax.bar_label(bars, labels=list(sales["展示标签"]), fontsize=9.5, padding=3, fontweight="bold")
+    ax.set_title("效果：增量年化销售（披露进展）", fontsize=9.4, loc="left")
+    ax.set_ylabel("亿美元", fontsize=8.3)
+    ax.set_ylim(0, 160)
+    ax.grid(axis="y", linestyle=":", alpha=0.45)
+    ax.text(0.98, 0.94, "归因未完整披露｜禁止算增幅", transform=ax.transAxes,
+            fontsize=7.4, color=C_GRAY, ha="right", va="top")
+
+    # 6 方向判断（仅文本，不画1.41×）
+    ax = axes[1, 1]
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
+    ax.axis("off")
+    ax.set_title("方向判断（不画伪倍数柱）", fontsize=9.4, loc="left", color=C_GRAY)
+    ax.text(0.04, 0.82,
+            "事实：交互同比 +210%\n"
+            "　　　在两次披露中均高于\n"
+            "　　　月活同比 +140%（Q3）\n"
+            "　　　与 +149%（11月公告）\n\n"
+            "只支持「使用在加深」\n"
+            "这一方向判断。\n\n"
+            "不可还原人均轮次，\n"
+            "不可写成「人均交互\n"
+            "提升约1.41倍」。",
+            fontsize=8.2, color=INK_TEXT, va="top", linespacing=1.4,
+            bbox=dict(boxstyle="round,pad=0.35", facecolor="#F3F4F6", edgecolor="#D1D5DB", linewidth=0.8))
+
+    # 7 Alexa for Shopping 隔离面板（仅文本）
+    ax = axes[1, 2]
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
+    ax.axis("off")
+    ax.set_title("隔离：Alexa for Shopping（合并后）", fontsize=9.2, loc="left", color=C_GRAY)
+    ax.add_patch(plt.Rectangle((0.02, 0.08), 0.96, 0.78, fill=False, linestyle="--",
+                                edgecolor=C_GRAY, linewidth=1.2, transform=ax.transAxes, clip_on=False))
+    ax.text(0.08, 0.78,
+            "2026Q2｜Rufus＋Alexa+\n合并后口径\n\n"
+            "· 活跃用户：接近翻倍\n"
+            "· 交互量：超5倍\n"
+            "· 美国客单价：高逾40%\n"
+            "　（观察性）\n\n"
+            "原文不定界表述，\n"
+            "不编码为精确百分比柱；\n"
+            "不可与左侧Rufus柱共轴。",
+            fontsize=8.0, color=INK_TEXT, va="top", linespacing=1.35)
+
+    # 8 判读顺序
+    ax = axes[1, 3]
+    ax.axis("off")
+    ax.text(0.0, 0.96,
+            "本图的判读顺序\n\n"
+            "① 这是Rufus「已披露指标」看板，\n"
+            "   与图7运营参与度指标不同构造，\n"
+            "   不可横向对读DAU／IPV／留存。\n\n"
+            "② 规模有累计用户，增速有同比，\n"
+            "   效果有完成率与增量销售——\n"
+            "   可判断方向与量级，不能测算\n"
+            "   运营漏斗或每轮产出。\n\n"
+            "③ 斜纹＝观察性／归因估算；\n"
+            "   虚线框＝合并后不同产品。\n"
+            "   图11展示同口径缺口，本图只\n"
+            "   展示另一套已披露证据。",
+            fontsize=7.9, color=INK_TEXT, va="top", linespacing=1.45)
+
+    for ax in axes.flat[:5]:
+        ax.tick_params(axis="x", labelsize=8.0)
+
+    suptitle(fig,
+             "图12  Rufus公开披露指标：规模／增速／效果可判方向，但不能替代图7同口径运营诊断｜P2",
+             fontsize=11.8, x=0.01, ha="left", fontweight="bold")
+    fig.tight_layout(rect=[0, 0.03, 1, 0.93])
+    footer(fig,
+           "数据来源：亚马逊2025Q3财报电话会（累计2.5亿、月活同比+140%、交互同比+210%、增量销售逾100亿节奏、完成率约高60%）；"
+           "亚马逊About Amazon产品公告（2025-11-18：月平均用户同比+149%、交互同比+210%、完成率表述）；"
+           "亚马逊2025Q4财报电话会及Q4业绩新闻稿（累计超3亿、增量年化销售近120亿美元、完成率约高60%确认）；"
+           "亚马逊2026Q2业绩新闻稿（Alexa for Shopping合并后：活跃用户接近翻倍、交互超5倍、美国客单价高逾40%）。\n"
+           "口径说明：累计使用用户≠月活≠日活；月活／交互仅为同比增速、无绝对值；购买完成率为「使用者对未使用者」观察性对比（自选择偏差，相关性上限）；"
+           "增量年化销售为incremental公司口径估算，归因方法未完整披露。累计用户与增量销售两柱均为「披露进展对照」，禁止计算两点增长率。\n"
+           "方向判断：交互同比（+210%）持续高于月活同比（+140%／+149%），只支持使用加深方向，不可还原人均轮次，故不画≈1.41×伪倍数柱。\n"
+           "隔离规则：Alexa for Shopping为Rufus与Alexa+合并后口径，仅以原文不定界文字展示，不与Rufus主面板共轴；图7同口径运营指标（DAU／IPV／留存／轮次）见本图未展示项与图11。\n"
+           "保真闸：脚本禁止未取得行画柱、禁止合并后口径进入主面板精确柱、禁止方向判断画倍数柱。底表见 data/rufus_disclosed_metrics.csv。\n"
+           + COMPILER)
+    fig.savefig(OUT / "fig12_rufus_disclosed_metrics.png")
+    plt.close(fig)
+
+
 if __name__ == "__main__":
     for stale in OUT.glob("*.png"):
         stale.unlink()
@@ -893,6 +1068,7 @@ if __name__ == "__main__":
     fig09_scorecard()
     fig10_ai_vs_traditional()
     fig11_rufus_same_metric_gap()
+    fig12_rufus_disclosed()
     print("已生成图表：")
     for path in sorted(OUT.glob("*.png")):
         print(" -", path.relative_to(ROOT))
